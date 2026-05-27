@@ -1,1 +1,1126 @@
-[]
+[
+  {
+    "ContainingType": "LockedIn.Api.Controllers.AdminController",
+    "Method": "GetAuditLogsAsync",
+    "RelativePath": "api/admin/audit-logs",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LockedIn.Api.Controllers.AdminController",
+    "Method": "GetDashboardAsync",
+    "RelativePath": "api/admin/dashboard",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LockedIn.Api.Controllers.AdminController",
+    "Method": "GetDisputesAsync",
+    "RelativePath": "api/admin/disputes",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LockedIn.Api.Controllers.AdminController",
+    "Method": "ResolveRefundCustomerAsync",
+    "RelativePath": "api/admin/disputes/{disputeId}/resolve-refund-customer",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "disputeId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LockedIn.Api.Controllers.AdminController",
+    "Method": "ResolveReleaseToPtAsync",
+    "RelativePath": "api/admin/disputes/{disputeId}/resolve-release-to-pt",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "disputeId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LockedIn.Api.Controllers.AdminController",
+    "Method": "MarkDisputeUnderReviewAsync",
+    "RelativePath": "api/admin/disputes/{disputeId}/under-review",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "disputeId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LockedIn.Api.Controllers.AdminController",
+    "Method": "GetPaymentsAsync",
+    "RelativePath": "api/admin/payments",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LockedIn.Api.Controllers.AdminController",
+    "Method": "GetPaymentByIdAsync",
+    "RelativePath": "api/admin/payments/{paymentId}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "paymentId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LockedIn.Api.Controllers.AdminController",
+    "Method": "GetPtVerificationsAsync",
+    "RelativePath": "api/admin/pt-verifications",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LockedIn.Api.Controllers.AdminController",
+    "Method": "ApprovePtAsync",
+    "RelativePath": "api/admin/pt-verifications/{ptProfileId}/approve",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "ptProfileId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LockedIn.Api.Controllers.AdminController",
+    "Method": "RejectPtAsync",
+    "RelativePath": "api/admin/pt-verifications/{ptProfileId}/reject",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "ptProfileId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LockedIn.Api.Controllers.AdminController",
+    "Method": "GetSettlementsAsync",
+    "RelativePath": "api/admin/settlements",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LockedIn.Api.Controllers.AdminController",
+    "Method": "ApproveSettlementAsync",
+    "RelativePath": "api/admin/settlements/{settlementId}/approve",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "settlementId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LockedIn.Api.Controllers.AdminController",
+    "Method": "MarkSettlementAsSettledAsync",
+    "RelativePath": "api/admin/settlements/{settlementId}/mark-settled",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "settlementId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LockedIn.Api.Controllers.AdminController",
+    "Method": "GetUsersAsync",
+    "RelativePath": "api/admin/users",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LockedIn.Api.Controllers.AdminController",
+    "Method": "GetUserByIdAsync",
+    "RelativePath": "api/admin/users/{userId}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "userId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LockedIn.Api.Controllers.AdminController",
+    "Method": "BanUserAsync",
+    "RelativePath": "api/admin/users/{userId}/ban",
+    "HttpMethod": "PATCH",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "userId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LockedIn.Api.Controllers.AdminController",
+    "Method": "UnbanUserAsync",
+    "RelativePath": "api/admin/users/{userId}/unban",
+    "HttpMethod": "PATCH",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "userId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LockedIn.Api.Controllers.AuthController",
+    "Method": "ForgotPasswordAsync",
+    "RelativePath": "api/auth/forgot-password",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LockedIn.Api.Controllers.AuthController",
+    "Method": "LoginAsync",
+    "RelativePath": "api/auth/login",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LockedIn.Api.Controllers.AuthController",
+    "Method": "LogoutAsync",
+    "RelativePath": "api/auth/logout",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LockedIn.Api.Controllers.AuthController",
+    "Method": "GetMeAsync",
+    "RelativePath": "api/auth/me",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LockedIn.Api.Controllers.AuthController",
+    "Method": "RefreshTokenAsync",
+    "RelativePath": "api/auth/refresh-token",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LockedIn.Api.Controllers.AuthController",
+    "Method": "RegisterCustomerAsync",
+    "RelativePath": "api/auth/register/customer",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LockedIn.Api.Controllers.AuthController",
+    "Method": "RegisterPtAsync",
+    "RelativePath": "api/auth/register/pt",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LockedIn.Api.Controllers.AuthController",
+    "Method": "ResetPasswordAsync",
+    "RelativePath": "api/auth/reset-password",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LockedIn.Api.Controllers.AuthController",
+    "Method": "VerifyEmailAsync",
+    "RelativePath": "api/auth/verify-email",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LockedIn.Api.Controllers.BookingsController",
+    "Method": "CreateBookingAsync",
+    "RelativePath": "api/bookings",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LockedIn.Api.Controllers.BookingsController",
+    "Method": "GetBookingByIdAsync",
+    "RelativePath": "api/bookings/{bookingId}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "bookingId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LockedIn.Api.Controllers.BookingsController",
+    "Method": "AcceptBookingAsync",
+    "RelativePath": "api/bookings/{bookingId}/accept",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "bookingId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LockedIn.Api.Controllers.BookingsController",
+    "Method": "CancelBookingAsync",
+    "RelativePath": "api/bookings/{bookingId}/cancel",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "bookingId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LockedIn.Api.Controllers.BookingsController",
+    "Method": "CompleteBookingAsync",
+    "RelativePath": "api/bookings/{bookingId}/complete",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "bookingId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LockedIn.Api.Controllers.BookingsController",
+    "Method": "RejectBookingAsync",
+    "RelativePath": "api/bookings/{bookingId}/reject",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "bookingId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LockedIn.Api.Controllers.BookingsController",
+    "Method": "GetMyBookingsAsync",
+    "RelativePath": "api/bookings/my",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LockedIn.Api.Controllers.ConversationsController",
+    "Method": "CreateConversationByBookingAsync",
+    "RelativePath": "api/conversations/booking/{bookingId}",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "bookingId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LockedIn.Api.Controllers.ConversationsController",
+    "Method": "GetConversationByWorkspaceAsync",
+    "RelativePath": "api/conversations/workspace/{workspaceId}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "workspaceId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LockedIn.Api.Controllers.CustomersController",
+    "Method": "GetMyCustomerProfileAsync",
+    "RelativePath": "api/customers/me/profile",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LockedIn.Api.Controllers.CustomersController",
+    "Method": "UpdateMyCustomerProfileAsync",
+    "RelativePath": "api/customers/me/profile",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LockedIn.Api.Controllers.DisputesController",
+    "Method": "CreateDisputeAsync",
+    "RelativePath": "api/disputes",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LockedIn.Api.Controllers.DisputesController",
+    "Method": "GetDisputeByIdAsync",
+    "RelativePath": "api/disputes/{disputeId}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "disputeId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LockedIn.Api.Controllers.DisputesController",
+    "Method": "UploadEvidenceAsync",
+    "RelativePath": "api/disputes/{disputeId}/evidences",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "disputeId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LockedIn.Api.Controllers.DisputesController",
+    "Method": "GetMyDisputesAsync",
+    "RelativePath": "api/disputes/my",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LockedIn.Api.Controllers.MarketplaceController",
+    "Method": "GetPtsAsync",
+    "RelativePath": "api/marketplace/pts",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LockedIn.Api.Controllers.MarketplaceController",
+    "Method": "GetPtDetailAsync",
+    "RelativePath": "api/marketplace/pts/{ptProfileId}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "ptProfileId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LockedIn.Api.Controllers.MarketplaceController",
+    "Method": "GetPtPackagesAsync",
+    "RelativePath": "api/marketplace/pts/{ptProfileId}/packages",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "ptProfileId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LockedIn.Api.Controllers.MarketplaceController",
+    "Method": "GetPtReviewsAsync",
+    "RelativePath": "api/marketplace/pts/{ptProfileId}/reviews",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "ptProfileId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LockedIn.Api.Controllers.MealPlansController",
+    "Method": "CreateMealPlanAsync",
+    "RelativePath": "api/meal-plans",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LockedIn.Api.Controllers.MealPlansController",
+    "Method": "GetMealPlanByIdAsync",
+    "RelativePath": "api/meal-plans/{mealPlanId}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "mealPlanId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LockedIn.Api.Controllers.MealPlansController",
+    "Method": "DeleteMealPlanAsync",
+    "RelativePath": "api/meal-plans/{mealPlanId}",
+    "HttpMethod": "DELETE",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "mealPlanId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LockedIn.Api.Controllers.MealPlansController",
+    "Method": "ActivateMealPlanAsync",
+    "RelativePath": "api/meal-plans/{mealPlanId}/activate",
+    "HttpMethod": "PATCH",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "mealPlanId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LockedIn.Api.Controllers.MealPlansController",
+    "Method": "GenerateMealPlanAsync",
+    "RelativePath": "api/meal-plans/generate",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LockedIn.Api.Controllers.MealPlansController",
+    "Method": "GetMealPlansByWorkspaceAsync",
+    "RelativePath": "api/meal-plans/workspace/{workspaceId}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "workspaceId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LockedIn.Api.Controllers.NotificationsController",
+    "Method": "DeleteNotificationAsync",
+    "RelativePath": "api/notifications/{notificationId}",
+    "HttpMethod": "DELETE",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "notificationId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LockedIn.Api.Controllers.NotificationsController",
+    "Method": "MarkAsReadAsync",
+    "RelativePath": "api/notifications/{notificationId}/read",
+    "HttpMethod": "PATCH",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "notificationId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LockedIn.Api.Controllers.NotificationsController",
+    "Method": "GetMyNotificationsAsync",
+    "RelativePath": "api/notifications/my",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LockedIn.Api.Controllers.NotificationsController",
+    "Method": "MarkAllAsReadAsync",
+    "RelativePath": "api/notifications/read-all",
+    "HttpMethod": "PATCH",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LockedIn.Api.Controllers.PackagesController",
+    "Method": "CreatePackageAsync",
+    "RelativePath": "api/packages",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LockedIn.Api.Controllers.PackagesController",
+    "Method": "GetPackageByIdAsync",
+    "RelativePath": "api/packages/{packageId}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "packageId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LockedIn.Api.Controllers.PackagesController",
+    "Method": "UpdatePackageAsync",
+    "RelativePath": "api/packages/{packageId}",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "packageId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LockedIn.Api.Controllers.PackagesController",
+    "Method": "DeletePackageAsync",
+    "RelativePath": "api/packages/{packageId}",
+    "HttpMethod": "DELETE",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "packageId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LockedIn.Api.Controllers.PackagesController",
+    "Method": "HidePackageAsync",
+    "RelativePath": "api/packages/{packageId}/hide",
+    "HttpMethod": "PATCH",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "packageId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LockedIn.Api.Controllers.PackagesController",
+    "Method": "ShowPackageAsync",
+    "RelativePath": "api/packages/{packageId}/show",
+    "HttpMethod": "PATCH",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "packageId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LockedIn.Api.Controllers.PackagesController",
+    "Method": "GetMyPackagesAsync",
+    "RelativePath": "api/packages/me",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LockedIn.Api.Controllers.PaymentsController",
+    "Method": "GetPaymentByIdAsync",
+    "RelativePath": "api/payments/{paymentId}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "paymentId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LockedIn.Api.Controllers.PaymentsController",
+    "Method": "GetPaymentByBookingAsync",
+    "RelativePath": "api/payments/booking/{bookingId}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "bookingId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LockedIn.Api.Controllers.PaymentsController",
+    "Method": "CreatePaymentLinkAsync",
+    "RelativePath": "api/payments/create-link",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LockedIn.Api.Controllers.PaymentsController",
+    "Method": "HandlePayOsWebhookAsync",
+    "RelativePath": "api/payments/payos/webhook",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LockedIn.Api.Controllers.PtProfilesController",
+    "Method": "UploadDocumentAsync",
+    "RelativePath": "api/pts/me/documents",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LockedIn.Api.Controllers.PtProfilesController",
+    "Method": "GetMyDocumentsAsync",
+    "RelativePath": "api/pts/me/documents",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LockedIn.Api.Controllers.PtProfilesController",
+    "Method": "DeleteDocumentAsync",
+    "RelativePath": "api/pts/me/documents/{documentId}",
+    "HttpMethod": "DELETE",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "documentId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LockedIn.Api.Controllers.PtProfilesController",
+    "Method": "GetMyPtProfileAsync",
+    "RelativePath": "api/pts/me/profile",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LockedIn.Api.Controllers.PtProfilesController",
+    "Method": "UpdateMyPtProfileAsync",
+    "RelativePath": "api/pts/me/profile",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LockedIn.Api.Controllers.ReviewsController",
+    "Method": "CreateReviewAsync",
+    "RelativePath": "api/reviews",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LockedIn.Api.Controllers.ReviewsController",
+    "Method": "UpdateReviewAsync",
+    "RelativePath": "api/reviews/{reviewId}",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "reviewId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LockedIn.Api.Controllers.ReviewsController",
+    "Method": "DeleteReviewAsync",
+    "RelativePath": "api/reviews/{reviewId}",
+    "HttpMethod": "DELETE",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "reviewId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LockedIn.Api.Controllers.ReviewsController",
+    "Method": "GetMyReviewsAsync",
+    "RelativePath": "api/reviews/my",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LockedIn.Api.Controllers.ReviewsController",
+    "Method": "GetReviewsByPtAsync",
+    "RelativePath": "api/reviews/pt/{ptProfileId}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "ptProfileId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LockedIn.Api.Controllers.SettlementsController",
+    "Method": "GetSettlementByIdAsync",
+    "RelativePath": "api/settlements/{settlementId}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "settlementId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LockedIn.Api.Controllers.SettlementsController",
+    "Method": "GetMySettlementsAsync",
+    "RelativePath": "api/settlements/my",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LockedIn.Api.Controllers.UsersController",
+    "Method": "GetMyProfileAsync",
+    "RelativePath": "api/users/me",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LockedIn.Api.Controllers.UsersController",
+    "Method": "UpdateMyProfileAsync",
+    "RelativePath": "api/users/me",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LockedIn.Api.Controllers.UsersController",
+    "Method": "UpdateAvatarAsync",
+    "RelativePath": "api/users/me/avatar",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LockedIn.Api.Controllers.UsersController",
+    "Method": "ChangePasswordAsync",
+    "RelativePath": "api/users/me/password",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LockedIn.Api.Controllers.WorkspacesController",
+    "Method": "GetWorkspaceByIdAsync",
+    "RelativePath": "api/workspaces/{workspaceId}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "workspaceId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LockedIn.Api.Controllers.WorkspacesController",
+    "Method": "UpdateCourseNoteAsync",
+    "RelativePath": "api/workspaces/{workspaceId}/course-note",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "workspaceId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LockedIn.Api.Controllers.WorkspacesController",
+    "Method": "GetWorkspaceByBookingAsync",
+    "RelativePath": "api/workspaces/booking/{bookingId}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "bookingId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  }
+]

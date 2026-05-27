@@ -75,10 +75,10 @@ D:\SU26_Ki_8\EXE\LockedIn\LockedIn.Api\obj\Debug\net8.0\staticwebassets.build.js
 D:\SU26_Ki_8\EXE\LockedIn\LockedIn.Api\obj\Debug\net8.0\staticwebassets.development.json
 D:\SU26_Ki_8\EXE\LockedIn\LockedIn.Api\obj\Debug\net8.0\staticwebassets.build.endpoints.json
 D:\SU26_Ki_8\EXE\LockedIn\LockedIn.Api\obj\Debug\net8.0\swae.build.ex.cache
-D:\SU26_Ki_8\EXE\LockedIn\LockedIn.Api\obj\Debug\net8.0\staticwebassets.upToDateCheck.txt
 D:\SU26_Ki_8\EXE\LockedIn\LockedIn.Api\obj\Debug\net8.0\LockedIn.3D6FA1A5.Up2Date
 D:\SU26_Ki_8\EXE\LockedIn\LockedIn.Api\obj\Debug\net8.0\LockedIn.Api.dll
 D:\SU26_Ki_8\EXE\LockedIn\LockedIn.Api\obj\Debug\net8.0\refint\LockedIn.Api.dll
 D:\SU26_Ki_8\EXE\LockedIn\LockedIn.Api\obj\Debug\net8.0\LockedIn.Api.pdb
 D:\SU26_Ki_8\EXE\LockedIn\LockedIn.Api\obj\Debug\net8.0\LockedIn.Api.genruntimeconfig.cache
 D:\SU26_Ki_8\EXE\LockedIn\LockedIn.Api\obj\Debug\net8.0\ref\LockedIn.Api.dll
+D:\SU26_Ki_8\EXE\LockedIn\LockedIn.Api\obj\Debug\net8.0\staticwebassets.upToDateCheck.txt

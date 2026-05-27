@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("LockedIn.Api")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+18583339e3e02db8846d9633ee7cdfa54c185e68")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+2baa9450f3af42c986c5d8a9b45af74b3bf4f326")]
 [assembly: System.Reflection.AssemblyProductAttribute("LockedIn.Api")]
 [assembly: System.Reflection.AssemblyTitleAttribute("LockedIn.Api")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
