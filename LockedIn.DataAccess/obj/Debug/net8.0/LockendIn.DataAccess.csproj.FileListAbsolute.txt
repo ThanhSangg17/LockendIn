@@ -1,0 +1,14 @@
+D:\SU26_Ki_8\EXE\LockedIn\LockendIn.DataAccess\bin\Debug\net8.0\LockendIn.DataAccess.deps.json
+D:\SU26_Ki_8\EXE\LockedIn\LockendIn.DataAccess\bin\Debug\net8.0\LockendIn.DataAccess.runtimeconfig.json
+D:\SU26_Ki_8\EXE\LockedIn\LockendIn.DataAccess\bin\Debug\net8.0\LockendIn.DataAccess.dll
+D:\SU26_Ki_8\EXE\LockedIn\LockendIn.DataAccess\bin\Debug\net8.0\LockendIn.DataAccess.pdb
+D:\SU26_Ki_8\EXE\LockedIn\LockendIn.DataAccess\obj\Debug\net8.0\LockendIn.DataAccess.csproj.AssemblyReference.cache
+D:\SU26_Ki_8\EXE\LockedIn\LockendIn.DataAccess\obj\Debug\net8.0\LockendIn.DataAccess.GeneratedMSBuildEditorConfig.editorconfig
+D:\SU26_Ki_8\EXE\LockedIn\LockendIn.DataAccess\obj\Debug\net8.0\LockendIn.DataAccess.AssemblyInfoInputs.cache
+D:\SU26_Ki_8\EXE\LockedIn\LockendIn.DataAccess\obj\Debug\net8.0\LockendIn.DataAccess.AssemblyInfo.cs
+D:\SU26_Ki_8\EXE\LockedIn\LockendIn.DataAccess\obj\Debug\net8.0\LockendIn.DataAccess.csproj.CoreCompileInputs.cache
+D:\SU26_Ki_8\EXE\LockedIn\LockendIn.DataAccess\obj\Debug\net8.0\LockendIn.DataAccess.dll
+D:\SU26_Ki_8\EXE\LockedIn\LockendIn.DataAccess\obj\Debug\net8.0\refint\LockendIn.DataAccess.dll
+D:\SU26_Ki_8\EXE\LockedIn\LockendIn.DataAccess\obj\Debug\net8.0\LockendIn.DataAccess.pdb
+D:\SU26_Ki_8\EXE\LockedIn\LockendIn.DataAccess\obj\Debug\net8.0\LockendIn.DataAccess.genruntimeconfig.cache
+D:\SU26_Ki_8\EXE\LockedIn\LockendIn.DataAccess\obj\Debug\net8.0\ref\LockendIn.DataAccess.dll

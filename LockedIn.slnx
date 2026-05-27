@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="LockedIn.Api/LockedIn.Api.csproj" />
+  <Project Path="LockedIn.BusinessObject/LockedIn.BusinessObject.csproj" />
+  <Project Path="LockedIn.DataAccess/LockedIn.DataAccess.csproj" />
+</Solution>
