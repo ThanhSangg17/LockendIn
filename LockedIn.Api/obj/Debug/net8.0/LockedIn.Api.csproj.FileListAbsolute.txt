@@ -23,8 +23,12 @@ D:\SU26_Ki_8\EXE\LockedIn\LockedIn.Api\bin\Debug\net8.0\Microsoft.IdentityModel.
 D:\SU26_Ki_8\EXE\LockedIn\LockedIn.Api\bin\Debug\net8.0\Microsoft.IdentityModel.Protocols.dll
 D:\SU26_Ki_8\EXE\LockedIn\LockedIn.Api\bin\Debug\net8.0\Microsoft.IdentityModel.Protocols.OpenIdConnect.dll
 D:\SU26_Ki_8\EXE\LockedIn\LockedIn.Api\bin\Debug\net8.0\Microsoft.IdentityModel.Tokens.dll
+D:\SU26_Ki_8\EXE\LockedIn\LockedIn.Api\bin\Debug\net8.0\Microsoft.OpenApi.dll
 D:\SU26_Ki_8\EXE\LockedIn\LockedIn.Api\bin\Debug\net8.0\Microsoft.SqlServer.Server.dll
 D:\SU26_Ki_8\EXE\LockedIn\LockedIn.Api\bin\Debug\net8.0\Microsoft.Win32.SystemEvents.dll
+D:\SU26_Ki_8\EXE\LockedIn\LockedIn.Api\bin\Debug\net8.0\Swashbuckle.AspNetCore.Swagger.dll
+D:\SU26_Ki_8\EXE\LockedIn\LockedIn.Api\bin\Debug\net8.0\Swashbuckle.AspNetCore.SwaggerGen.dll
+D:\SU26_Ki_8\EXE\LockedIn\LockedIn.Api\bin\Debug\net8.0\Swashbuckle.AspNetCore.SwaggerUI.dll
 D:\SU26_Ki_8\EXE\LockedIn\LockedIn.Api\bin\Debug\net8.0\System.Configuration.ConfigurationManager.dll
 D:\SU26_Ki_8\EXE\LockedIn\LockedIn.Api\bin\Debug\net8.0\System.Drawing.Common.dll
 D:\SU26_Ki_8\EXE\LockedIn\LockedIn.Api\bin\Debug\net8.0\System.IdentityModel.Tokens.Jwt.dll
@@ -55,6 +59,7 @@ D:\SU26_Ki_8\EXE\LockedIn\LockedIn.Api\obj\Debug\net8.0\LockedIn.Api.GeneratedMS
 D:\SU26_Ki_8\EXE\LockedIn\LockedIn.Api\obj\Debug\net8.0\LockedIn.Api.AssemblyInfoInputs.cache
 D:\SU26_Ki_8\EXE\LockedIn\LockedIn.Api\obj\Debug\net8.0\LockedIn.Api.AssemblyInfo.cs
 D:\SU26_Ki_8\EXE\LockedIn\LockedIn.Api\obj\Debug\net8.0\LockedIn.Api.csproj.CoreCompileInputs.cache
+D:\SU26_Ki_8\EXE\LockedIn\LockedIn.Api\obj\Debug\net8.0\LockedIn.Api.MvcApplicationPartsAssemblyInfo.cs
 D:\SU26_Ki_8\EXE\LockedIn\LockedIn.Api\obj\Debug\net8.0\LockedIn.Api.MvcApplicationPartsAssemblyInfo.cache
 D:\SU26_Ki_8\EXE\LockedIn\LockedIn.Api\obj\Debug\net8.0\LockedIn.Api.RazorAssemblyInfo.cache
 D:\SU26_Ki_8\EXE\LockedIn\LockedIn.Api\obj\Debug\net8.0\LockedIn.Api.RazorAssemblyInfo.cs
@@ -70,10 +75,10 @@ D:\SU26_Ki_8\EXE\LockedIn\LockedIn.Api\obj\Debug\net8.0\staticwebassets.build.js
 D:\SU26_Ki_8\EXE\LockedIn\LockedIn.Api\obj\Debug\net8.0\staticwebassets.development.json
 D:\SU26_Ki_8\EXE\LockedIn\LockedIn.Api\obj\Debug\net8.0\staticwebassets.build.endpoints.json
 D:\SU26_Ki_8\EXE\LockedIn\LockedIn.Api\obj\Debug\net8.0\swae.build.ex.cache
+D:\SU26_Ki_8\EXE\LockedIn\LockedIn.Api\obj\Debug\net8.0\staticwebassets.upToDateCheck.txt
 D:\SU26_Ki_8\EXE\LockedIn\LockedIn.Api\obj\Debug\net8.0\LockedIn.3D6FA1A5.Up2Date
 D:\SU26_Ki_8\EXE\LockedIn\LockedIn.Api\obj\Debug\net8.0\LockedIn.Api.dll
 D:\SU26_Ki_8\EXE\LockedIn\LockedIn.Api\obj\Debug\net8.0\refint\LockedIn.Api.dll
 D:\SU26_Ki_8\EXE\LockedIn\LockedIn.Api\obj\Debug\net8.0\LockedIn.Api.pdb
 D:\SU26_Ki_8\EXE\LockedIn\LockedIn.Api\obj\Debug\net8.0\LockedIn.Api.genruntimeconfig.cache
 D:\SU26_Ki_8\EXE\LockedIn\LockedIn.Api\obj\Debug\net8.0\ref\LockedIn.Api.dll
-D:\SU26_Ki_8\EXE\LockedIn\LockedIn.Api\obj\Debug\net8.0\staticwebassets.upToDateCheck.txt

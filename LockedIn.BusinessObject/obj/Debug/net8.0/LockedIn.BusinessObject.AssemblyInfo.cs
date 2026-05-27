@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("LockedIn.BusinessObject")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+594727a5cae593cc622c979f533e5727dde6108f")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+18583339e3e02db8846d9633ee7cdfa54c185e68")]
 [assembly: System.Reflection.AssemblyProductAttribute("LockedIn.BusinessObject")]
 [assembly: System.Reflection.AssemblyTitleAttribute("LockedIn.BusinessObject")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
