@@ -2,6 +2,7 @@ using System;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using LockedIn.BusinessObject.Interfaces;
+using LockedIn.BusinessObject.DTOs.Disputes;
 
 namespace LockedIn.Api.Controllers;
 
@@ -101,16 +102,16 @@ public class AdminController : ControllerBase
     }
 
     [HttpPost("disputes/{disputeId}/resolve-refund-customer")]
-    public async Task<IActionResult> ResolveRefundCustomerAsync(Guid disputeId)
+    public async Task<IActionResult> ResolveRefundCustomerAsync(Guid disputeId, [FromBody] ResolveDisputeRequest request)
     {
-        var result = await _service.ResolveRefundCustomerAsync(disputeId);
+        var result = await _service.ResolveRefundCustomerAsync(disputeId, request);
         return Ok(result);
     }
 
     [HttpPost("disputes/{disputeId}/resolve-release-to-pt")]
-    public async Task<IActionResult> ResolveReleaseToPtAsync(Guid disputeId)
+    public async Task<IActionResult> ResolveReleaseToPtAsync(Guid disputeId, [FromBody] ResolveDisputeRequest request)
     {
-        var result = await _service.ResolveReleaseToPtAsync(disputeId);
+        var result = await _service.ResolveReleaseToPtAsync(disputeId, request);
         return Ok(result);
     }
 
@@ -141,5 +142,4 @@ public class AdminController : ControllerBase
         var result = await _service.GetAuditLogsAsync();
         return Ok(result);
     }
-
 }

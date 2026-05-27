@@ -2,6 +2,7 @@ using System;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using LockedIn.BusinessObject.Interfaces;
+using LockedIn.BusinessObject.DTOs.Reviews;
 
 namespace LockedIn.Api.Controllers;
 
@@ -17,9 +18,9 @@ public class ReviewsController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<IActionResult> CreateReviewAsync()
+    public async Task<IActionResult> CreateReviewAsync([FromBody] CreateReviewRequest request)
     {
-        var result = await _service.CreateReviewAsync();
+        var result = await _service.CreateReviewAsync(request);
         return Ok(result);
     }
 
@@ -38,9 +39,9 @@ public class ReviewsController : ControllerBase
     }
 
     [HttpPut("{reviewId}")]
-    public async Task<IActionResult> UpdateReviewAsync(Guid reviewId)
+    public async Task<IActionResult> UpdateReviewAsync(Guid reviewId, [FromBody] UpdateReviewRequest request)
     {
-        var result = await _service.UpdateReviewAsync(reviewId);
+        var result = await _service.UpdateReviewAsync(reviewId, request);
         return Ok(result);
     }
 
@@ -50,5 +51,4 @@ public class ReviewsController : ControllerBase
         var result = await _service.DeleteReviewAsync(reviewId);
         return Ok(result);
     }
-
 }

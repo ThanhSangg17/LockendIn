@@ -2,6 +2,7 @@ using System;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using LockedIn.BusinessObject.Interfaces;
+using LockedIn.BusinessObject.DTOs.Disputes;
 
 namespace LockedIn.Api.Controllers;
 
@@ -17,9 +18,9 @@ public class DisputesController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<IActionResult> CreateDisputeAsync()
+    public async Task<IActionResult> CreateDisputeAsync([FromBody] CreateDisputeRequest request)
     {
-        var result = await _service.CreateDisputeAsync();
+        var result = await _service.CreateDisputeAsync(request);
         return Ok(result);
     }
 
@@ -38,10 +39,9 @@ public class DisputesController : ControllerBase
     }
 
     [HttpPost("{disputeId}/evidences")]
-    public async Task<IActionResult> UploadEvidenceAsync(Guid disputeId)
+    public async Task<IActionResult> UploadEvidenceAsync(Guid disputeId, [FromBody] UploadDisputeEvidenceRequest request)
     {
-        var result = await _service.UploadEvidenceAsync(disputeId);
+        var result = await _service.UploadEvidenceAsync(disputeId, request);
         return Ok(result);
     }
-
 }

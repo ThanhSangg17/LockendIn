@@ -1,13 +1,13 @@
-using System;
 using System.Threading.Tasks;
 using LockedIn.BusinessObject.Common;
+using LockedIn.BusinessObject.DTOs.Users;
 
 namespace LockedIn.BusinessObject.Interfaces;
 
 public interface IUserService
 {
-    Task<ApiResponse<string>> GetMyProfileAsync();
-    Task<ApiResponse<string>> UpdateMyProfileAsync();
-    Task<ApiResponse<string>> UpdateAvatarAsync();
-    Task<ApiResponse<string>> ChangePasswordAsync();
+    Task<ApiResponse<UserResponse>> GetMyProfileAsync();
+    Task<ApiResponse<UserResponse>> UpdateMyProfileAsync(UpdateUserRequest request);
+    Task<ApiResponse<UserResponse>> UpdateAvatarAsync(UpdateAvatarRequest request);
+    Task<ApiResponse<string>> ChangePasswordAsync(ChangePasswordRequest request);
 }

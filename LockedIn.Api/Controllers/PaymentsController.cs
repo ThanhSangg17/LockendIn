@@ -2,6 +2,7 @@ using System;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using LockedIn.BusinessObject.Interfaces;
+using LockedIn.BusinessObject.DTOs.Payments;
 
 namespace LockedIn.Api.Controllers;
 
@@ -17,9 +18,9 @@ public class PaymentsController : ControllerBase
     }
 
     [HttpPost("create-link")]
-    public async Task<IActionResult> CreatePaymentLinkAsync()
+    public async Task<IActionResult> CreatePaymentLinkAsync([FromBody] CreatePaymentLinkRequest request)
     {
-        var result = await _service.CreatePaymentLinkAsync();
+        var result = await _service.CreatePaymentLinkAsync(request);
         return Ok(result);
     }
 
@@ -38,10 +39,9 @@ public class PaymentsController : ControllerBase
     }
 
     [HttpPost("payos/webhook")]
-    public async Task<IActionResult> HandlePayOsWebhookAsync()
+    public async Task<IActionResult> HandlePayOsWebhookAsync([FromBody] PayOsWebhookRequest request)
     {
-        var result = await _service.HandlePayOsWebhookAsync();
+        var result = await _service.HandlePayOsWebhookAsync(request);
         return Ok(result);
     }
-
 }

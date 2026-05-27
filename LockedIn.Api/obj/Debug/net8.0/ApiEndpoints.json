@@ -41,6 +41,11 @@
         "Name": "disputeId",
         "Type": "System.Guid",
         "IsRequired": true
+      },
+      {
+        "Name": "request",
+        "Type": "LockedIn.BusinessObject.DTOs.Disputes.ResolveDisputeRequest",
+        "IsRequired": true
       }
     ],
     "ReturnTypes": []
@@ -56,6 +61,11 @@
       {
         "Name": "disputeId",
         "Type": "System.Guid",
+        "IsRequired": true
+      },
+      {
+        "Name": "request",
+        "Type": "LockedIn.BusinessObject.DTOs.Disputes.ResolveDisputeRequest",
         "IsRequired": true
       }
     ],
@@ -252,7 +262,13 @@
     "HttpMethod": "POST",
     "IsController": true,
     "Order": 0,
-    "Parameters": [],
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "LockedIn.BusinessObject.DTOs.Auth.ForgotPasswordRequest",
+        "IsRequired": true
+      }
+    ],
     "ReturnTypes": []
   },
   {
@@ -262,7 +278,13 @@
     "HttpMethod": "POST",
     "IsController": true,
     "Order": 0,
-    "Parameters": [],
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "LockedIn.BusinessObject.DTOs.Auth.LoginRequest",
+        "IsRequired": true
+      }
+    ],
     "ReturnTypes": []
   },
   {
@@ -292,7 +314,13 @@
     "HttpMethod": "POST",
     "IsController": true,
     "Order": 0,
-    "Parameters": [],
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "LockedIn.BusinessObject.DTOs.Auth.RefreshTokenRequest",
+        "IsRequired": true
+      }
+    ],
     "ReturnTypes": []
   },
   {
@@ -302,7 +330,13 @@
     "HttpMethod": "POST",
     "IsController": true,
     "Order": 0,
-    "Parameters": [],
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "LockedIn.BusinessObject.DTOs.Auth.RegisterCustomerRequest",
+        "IsRequired": true
+      }
+    ],
     "ReturnTypes": []
   },
   {
@@ -312,7 +346,13 @@
     "HttpMethod": "POST",
     "IsController": true,
     "Order": 0,
-    "Parameters": [],
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "LockedIn.BusinessObject.DTOs.Auth.RegisterPtRequest",
+        "IsRequired": true
+      }
+    ],
     "ReturnTypes": []
   },
   {
@@ -322,7 +362,13 @@
     "HttpMethod": "POST",
     "IsController": true,
     "Order": 0,
-    "Parameters": [],
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "LockedIn.BusinessObject.DTOs.Auth.ResetPasswordRequest",
+        "IsRequired": true
+      }
+    ],
     "ReturnTypes": []
   },
   {
@@ -332,7 +378,13 @@
     "HttpMethod": "POST",
     "IsController": true,
     "Order": 0,
-    "Parameters": [],
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "LockedIn.BusinessObject.DTOs.Auth.VerifyEmailRequest",
+        "IsRequired": true
+      }
+    ],
     "ReturnTypes": []
   },
   {
@@ -342,7 +394,13 @@
     "HttpMethod": "POST",
     "IsController": true,
     "Order": 0,
-    "Parameters": [],
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "LockedIn.BusinessObject.DTOs.Bookings.CreateBookingRequest",
+        "IsRequired": true
+      }
+    ],
     "ReturnTypes": []
   },
   {
@@ -484,7 +542,13 @@
     "HttpMethod": "PUT",
     "IsController": true,
     "Order": 0,
-    "Parameters": [],
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "LockedIn.BusinessObject.DTOs.Customers.UpdateCustomerProfileRequest",
+        "IsRequired": true
+      }
+    ],
     "ReturnTypes": []
   },
   {
@@ -494,7 +558,13 @@
     "HttpMethod": "POST",
     "IsController": true,
     "Order": 0,
-    "Parameters": [],
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "LockedIn.BusinessObject.DTOs.Disputes.CreateDisputeRequest",
+        "IsRequired": true
+      }
+    ],
     "ReturnTypes": []
   },
   {
@@ -525,6 +595,11 @@
         "Name": "disputeId",
         "Type": "System.Guid",
         "IsRequired": true
+      },
+      {
+        "Name": "request",
+        "Type": "LockedIn.BusinessObject.DTOs.Disputes.UploadDisputeEvidenceRequest",
+        "IsRequired": true
       }
     ],
     "ReturnTypes": []
@@ -546,7 +621,28 @@
     "HttpMethod": "GET",
     "IsController": true,
     "Order": 0,
-    "Parameters": [],
+    "Parameters": [
+      {
+        "Name": "Keyword",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "MinRating",
+        "Type": "System.Nullable\u00601[[System.Decimal, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "IsRequired": false
+      },
+      {
+        "Name": "PageNumber",
+        "Type": "System.Int32",
+        "IsRequired": false
+      },
+      {
+        "Name": "PageSize",
+        "Type": "System.Int32",
+        "IsRequired": false
+      }
+    ],
     "ReturnTypes": []
   },
   {
@@ -604,7 +700,13 @@
     "HttpMethod": "POST",
     "IsController": true,
     "Order": 0,
-    "Parameters": [],
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "LockedIn.BusinessObject.DTOs.MealPlans.CreateMealPlanRequest",
+        "IsRequired": true
+      }
+    ],
     "ReturnTypes": []
   },
   {
@@ -662,7 +764,13 @@
     "HttpMethod": "POST",
     "IsController": true,
     "Order": 0,
-    "Parameters": [],
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "LockedIn.BusinessObject.DTOs.MealPlans.GenerateMealPlanRequest",
+        "IsRequired": true
+      }
+    ],
     "ReturnTypes": []
   },
   {
@@ -740,7 +848,13 @@
     "HttpMethod": "POST",
     "IsController": true,
     "Order": 0,
-    "Parameters": [],
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "LockedIn.BusinessObject.DTOs.Packages.CreatePackageRequest",
+        "IsRequired": true
+      }
+    ],
     "ReturnTypes": []
   },
   {
@@ -770,6 +884,11 @@
       {
         "Name": "packageId",
         "Type": "System.Guid",
+        "IsRequired": true
+      },
+      {
+        "Name": "request",
+        "Type": "LockedIn.BusinessObject.DTOs.Packages.UpdatePackageRequest",
         "IsRequired": true
       }
     ],
@@ -826,7 +945,7 @@
   {
     "ContainingType": "LockedIn.Api.Controllers.PackagesController",
     "Method": "GetMyPackagesAsync",
-    "RelativePath": "api/packages/me",
+    "RelativePath": "api/packages/my",
     "HttpMethod": "GET",
     "IsController": true,
     "Order": 0,
@@ -872,7 +991,13 @@
     "HttpMethod": "POST",
     "IsController": true,
     "Order": 0,
-    "Parameters": [],
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "LockedIn.BusinessObject.DTOs.Payments.CreatePaymentLinkRequest",
+        "IsRequired": true
+      }
+    ],
     "ReturnTypes": []
   },
   {
@@ -882,7 +1007,13 @@
     "HttpMethod": "POST",
     "IsController": true,
     "Order": 0,
-    "Parameters": [],
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "LockedIn.BusinessObject.DTOs.Payments.PayOsWebhookRequest",
+        "IsRequired": true
+      }
+    ],
     "ReturnTypes": []
   },
   {
@@ -892,7 +1023,13 @@
     "HttpMethod": "POST",
     "IsController": true,
     "Order": 0,
-    "Parameters": [],
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "LockedIn.BusinessObject.DTOs.PtProfiles.UploadPtDocumentRequest",
+        "IsRequired": true
+      }
+    ],
     "ReturnTypes": []
   },
   {
@@ -938,7 +1075,13 @@
     "HttpMethod": "PUT",
     "IsController": true,
     "Order": 0,
-    "Parameters": [],
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "LockedIn.BusinessObject.DTOs.PtProfiles.UpdatePtProfileRequest",
+        "IsRequired": true
+      }
+    ],
     "ReturnTypes": []
   },
   {
@@ -948,7 +1091,13 @@
     "HttpMethod": "POST",
     "IsController": true,
     "Order": 0,
-    "Parameters": [],
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "LockedIn.BusinessObject.DTOs.Reviews.CreateReviewRequest",
+        "IsRequired": true
+      }
+    ],
     "ReturnTypes": []
   },
   {
@@ -962,6 +1111,11 @@
       {
         "Name": "reviewId",
         "Type": "System.Guid",
+        "IsRequired": true
+      },
+      {
+        "Name": "request",
+        "Type": "LockedIn.BusinessObject.DTOs.Reviews.UpdateReviewRequest",
         "IsRequired": true
       }
     ],
@@ -1052,7 +1206,13 @@
     "HttpMethod": "PUT",
     "IsController": true,
     "Order": 0,
-    "Parameters": [],
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "LockedIn.BusinessObject.DTOs.Users.UpdateUserRequest",
+        "IsRequired": true
+      }
+    ],
     "ReturnTypes": []
   },
   {
@@ -1062,7 +1222,13 @@
     "HttpMethod": "PUT",
     "IsController": true,
     "Order": 0,
-    "Parameters": [],
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "LockedIn.BusinessObject.DTOs.Users.UpdateAvatarRequest",
+        "IsRequired": true
+      }
+    ],
     "ReturnTypes": []
   },
   {
@@ -1072,7 +1238,13 @@
     "HttpMethod": "PUT",
     "IsController": true,
     "Order": 0,
-    "Parameters": [],
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "LockedIn.BusinessObject.DTOs.Users.ChangePasswordRequest",
+        "IsRequired": true
+      }
+    ],
     "ReturnTypes": []
   },
   {
@@ -1102,6 +1274,11 @@
       {
         "Name": "workspaceId",
         "Type": "System.Guid",
+        "IsRequired": true
+      },
+      {
+        "Name": "request",
+        "Type": "LockedIn.BusinessObject.DTOs.Workspaces.UpdateCourseNoteRequest",
         "IsRequired": true
       }
     ],

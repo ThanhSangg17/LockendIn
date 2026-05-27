@@ -2,6 +2,7 @@ using System;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using LockedIn.BusinessObject.Interfaces;
+using LockedIn.BusinessObject.DTOs.Workspaces;
 
 namespace LockedIn.Api.Controllers;
 
@@ -31,10 +32,9 @@ public class WorkspacesController : ControllerBase
     }
 
     [HttpPut("{workspaceId}/course-note")]
-    public async Task<IActionResult> UpdateCourseNoteAsync(Guid workspaceId)
+    public async Task<IActionResult> UpdateCourseNoteAsync(Guid workspaceId, [FromBody] UpdateCourseNoteRequest request)
     {
-        var result = await _service.UpdateCourseNoteAsync(workspaceId);
+        var result = await _service.UpdateCourseNoteAsync(workspaceId, request);
         return Ok(result);
     }
-
 }

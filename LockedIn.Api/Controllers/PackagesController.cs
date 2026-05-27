@@ -2,6 +2,7 @@ using System;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using LockedIn.BusinessObject.Interfaces;
+using LockedIn.BusinessObject.DTOs.Packages;
 
 namespace LockedIn.Api.Controllers;
 
@@ -17,13 +18,13 @@ public class PackagesController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<IActionResult> CreatePackageAsync()
+    public async Task<IActionResult> CreatePackageAsync([FromBody] CreatePackageRequest request)
     {
-        var result = await _service.CreatePackageAsync();
+        var result = await _service.CreatePackageAsync(request);
         return Ok(result);
     }
 
-    [HttpGet("me")]
+    [HttpGet("my")]
     public async Task<IActionResult> GetMyPackagesAsync()
     {
         var result = await _service.GetMyPackagesAsync();
@@ -38,9 +39,9 @@ public class PackagesController : ControllerBase
     }
 
     [HttpPut("{packageId}")]
-    public async Task<IActionResult> UpdatePackageAsync(Guid packageId)
+    public async Task<IActionResult> UpdatePackageAsync(Guid packageId, [FromBody] UpdatePackageRequest request)
     {
-        var result = await _service.UpdatePackageAsync(packageId);
+        var result = await _service.UpdatePackageAsync(packageId, request);
         return Ok(result);
     }
 
@@ -64,5 +65,4 @@ public class PackagesController : ControllerBase
         var result = await _service.DeletePackageAsync(packageId);
         return Ok(result);
     }
-
 }

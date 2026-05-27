@@ -2,6 +2,7 @@ using System;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using LockedIn.BusinessObject.Interfaces;
+using LockedIn.BusinessObject.DTOs.Bookings;
 
 namespace LockedIn.Api.Controllers;
 
@@ -17,9 +18,9 @@ public class BookingsController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<IActionResult> CreateBookingAsync()
+    public async Task<IActionResult> CreateBookingAsync([FromBody] CreateBookingRequest request)
     {
-        var result = await _service.CreateBookingAsync();
+        var result = await _service.CreateBookingAsync(request);
         return Ok(result);
     }
 
@@ -64,5 +65,4 @@ public class BookingsController : ControllerBase
         var result = await _service.CompleteBookingAsync(bookingId);
         return Ok(result);
     }
-
 }

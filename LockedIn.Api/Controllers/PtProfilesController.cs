@@ -2,6 +2,7 @@ using System;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using LockedIn.BusinessObject.Interfaces;
+using LockedIn.BusinessObject.DTOs.PtProfiles;
 
 namespace LockedIn.Api.Controllers;
 
@@ -24,16 +25,16 @@ public class PtProfilesController : ControllerBase
     }
 
     [HttpPut("me/profile")]
-    public async Task<IActionResult> UpdateMyPtProfileAsync()
+    public async Task<IActionResult> UpdateMyPtProfileAsync([FromBody] UpdatePtProfileRequest request)
     {
-        var result = await _service.UpdateMyPtProfileAsync();
+        var result = await _service.UpdateMyPtProfileAsync(request);
         return Ok(result);
     }
 
     [HttpPost("me/documents")]
-    public async Task<IActionResult> UploadDocumentAsync()
+    public async Task<IActionResult> UploadDocumentAsync([FromBody] UploadPtDocumentRequest request)
     {
-        var result = await _service.UploadDocumentAsync();
+        var result = await _service.UploadDocumentAsync(request);
         return Ok(result);
     }
 
@@ -50,5 +51,4 @@ public class PtProfilesController : ControllerBase
         var result = await _service.DeleteDocumentAsync(documentId);
         return Ok(result);
     }
-
 }

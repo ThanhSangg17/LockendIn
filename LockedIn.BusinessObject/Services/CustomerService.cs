@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using LockedIn.BusinessObject.Common;
 using LockedIn.BusinessObject.Interfaces;
 using LockedIn.DataAccess.UnitOfWork;
+using LockedIn.BusinessObject.DTOs.Customers;
 
 namespace LockedIn.BusinessObject.Services;
 
@@ -15,14 +16,13 @@ public class CustomerService : ICustomerService
         _unitOfWork = unitOfWork;
     }
 
-    public async Task<ApiResponse<string>> GetMyCustomerProfileAsync()
+    public async Task<ApiResponse<CustomerProfileResponse>> GetMyCustomerProfileAsync()
     {
-        return await Task.FromResult(ApiResponse<string>.Ok("Not implemented yet"));
+        return await Task.FromResult(ApiResponse<CustomerProfileResponse>.Ok(new CustomerProfileResponse(), "Not implemented yet"));
     }
 
-    public async Task<ApiResponse<string>> UpdateMyCustomerProfileAsync()
+    public async Task<ApiResponse<CustomerProfileResponse>> UpdateMyCustomerProfileAsync(UpdateCustomerProfileRequest request)
     {
-        return await Task.FromResult(ApiResponse<string>.Ok("Not implemented yet"));
+        return await Task.FromResult(ApiResponse<CustomerProfileResponse>.Ok(new CustomerProfileResponse(), "Not implemented yet"));
     }
-
 }

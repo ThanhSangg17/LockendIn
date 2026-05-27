@@ -1,13 +1,14 @@
 using System;
 using System.Threading.Tasks;
 using LockedIn.BusinessObject.Common;
+using LockedIn.BusinessObject.DTOs.Payments;
 
 namespace LockedIn.BusinessObject.Interfaces;
 
 public interface IPaymentService
 {
-    Task<ApiResponse<string>> CreatePaymentLinkAsync();
-    Task<ApiResponse<string>> GetPaymentByBookingAsync(Guid bookingId);
-    Task<ApiResponse<string>> GetPaymentByIdAsync(Guid paymentId);
-    Task<ApiResponse<string>> HandlePayOsWebhookAsync();
+    Task<ApiResponse<PaymentResponse>> CreatePaymentLinkAsync(CreatePaymentLinkRequest request);
+    Task<ApiResponse<PaymentResponse>> GetPaymentByBookingAsync(Guid bookingId);
+    Task<ApiResponse<PaymentResponse>> GetPaymentByIdAsync(Guid paymentId);
+    Task<ApiResponse<string>> HandlePayOsWebhookAsync(PayOsWebhookRequest request);
 }

@@ -1,7 +1,7 @@
-using System;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using LockedIn.BusinessObject.Interfaces;
+using LockedIn.BusinessObject.DTOs.Users;
 
 namespace LockedIn.Api.Controllers;
 
@@ -24,24 +24,23 @@ public class UsersController : ControllerBase
     }
 
     [HttpPut("me")]
-    public async Task<IActionResult> UpdateMyProfileAsync()
+    public async Task<IActionResult> UpdateMyProfileAsync([FromBody] UpdateUserRequest request)
     {
-        var result = await _service.UpdateMyProfileAsync();
+        var result = await _service.UpdateMyProfileAsync(request);
         return Ok(result);
     }
 
     [HttpPut("me/avatar")]
-    public async Task<IActionResult> UpdateAvatarAsync()
+    public async Task<IActionResult> UpdateAvatarAsync([FromBody] UpdateAvatarRequest request)
     {
-        var result = await _service.UpdateAvatarAsync();
+        var result = await _service.UpdateAvatarAsync(request);
         return Ok(result);
     }
 
     [HttpPut("me/password")]
-    public async Task<IActionResult> ChangePasswordAsync()
+    public async Task<IActionResult> ChangePasswordAsync([FromBody] ChangePasswordRequest request)
     {
-        var result = await _service.ChangePasswordAsync();
+        var result = await _service.ChangePasswordAsync(request);
         return Ok(result);
     }
-
 }

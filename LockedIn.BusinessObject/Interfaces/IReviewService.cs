@@ -1,14 +1,16 @@
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using LockedIn.BusinessObject.Common;
+using LockedIn.BusinessObject.DTOs.Reviews;
 
 namespace LockedIn.BusinessObject.Interfaces;
 
 public interface IReviewService
 {
-    Task<ApiResponse<string>> CreateReviewAsync();
-    Task<ApiResponse<string>> GetMyReviewsAsync();
-    Task<ApiResponse<string>> GetReviewsByPtAsync(Guid ptProfileId);
-    Task<ApiResponse<string>> UpdateReviewAsync(Guid reviewId);
+    Task<ApiResponse<ReviewResponse>> CreateReviewAsync(CreateReviewRequest request);
+    Task<ApiResponse<IReadOnlyList<ReviewResponse>>> GetMyReviewsAsync();
+    Task<ApiResponse<IReadOnlyList<ReviewResponse>>> GetReviewsByPtAsync(Guid ptProfileId);
+    Task<ApiResponse<ReviewResponse>> UpdateReviewAsync(Guid reviewId, UpdateReviewRequest request);
     Task<ApiResponse<string>> DeleteReviewAsync(Guid reviewId);
 }

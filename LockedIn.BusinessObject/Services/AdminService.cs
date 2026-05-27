@@ -1,8 +1,12 @@
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using LockedIn.BusinessObject.Common;
 using LockedIn.BusinessObject.Interfaces;
 using LockedIn.DataAccess.UnitOfWork;
+using LockedIn.BusinessObject.DTOs.Admin;
+using LockedIn.BusinessObject.DTOs.Disputes;
+using LockedIn.BusinessObject.DTOs.PtProfiles;
 
 namespace LockedIn.BusinessObject.Services;
 
@@ -15,94 +19,93 @@ public class AdminService : IAdminService
         _unitOfWork = unitOfWork;
     }
 
-    public async Task<ApiResponse<string>> GetDashboardAsync()
+    public async Task<ApiResponse<DashboardResponse>> GetDashboardAsync()
     {
-        return await Task.FromResult(ApiResponse<string>.Ok("Not implemented yet"));
+        return await Task.FromResult(ApiResponse<DashboardResponse>.Ok(new DashboardResponse(), "Not implemented yet"));
     }
 
-    public async Task<ApiResponse<string>> GetUsersAsync()
+    public async Task<ApiResponse<IReadOnlyList<AdminUserResponse>>> GetUsersAsync()
     {
-        return await Task.FromResult(ApiResponse<string>.Ok("Not implemented yet"));
+        return await Task.FromResult(ApiResponse<IReadOnlyList<AdminUserResponse>>.Ok(new List<AdminUserResponse>(), "Not implemented yet"));
     }
 
-    public async Task<ApiResponse<string>> GetUserByIdAsync(Guid userId)
+    public async Task<ApiResponse<AdminUserResponse>> GetUserByIdAsync(Guid userId)
     {
-        return await Task.FromResult(ApiResponse<string>.Ok("Not implemented yet"));
+        return await Task.FromResult(ApiResponse<AdminUserResponse>.Ok(new AdminUserResponse(), "Not implemented yet"));
     }
 
-    public async Task<ApiResponse<string>> BanUserAsync(Guid userId)
+    public async Task<ApiResponse<AdminUserResponse>> BanUserAsync(Guid userId)
     {
-        return await Task.FromResult(ApiResponse<string>.Ok("Not implemented yet"));
+        return await Task.FromResult(ApiResponse<AdminUserResponse>.Ok(new AdminUserResponse(), "Not implemented yet"));
     }
 
-    public async Task<ApiResponse<string>> UnbanUserAsync(Guid userId)
+    public async Task<ApiResponse<AdminUserResponse>> UnbanUserAsync(Guid userId)
     {
-        return await Task.FromResult(ApiResponse<string>.Ok("Not implemented yet"));
+        return await Task.FromResult(ApiResponse<AdminUserResponse>.Ok(new AdminUserResponse(), "Not implemented yet"));
     }
 
-    public async Task<ApiResponse<string>> GetPtVerificationsAsync()
+    public async Task<ApiResponse<IReadOnlyList<PtProfileResponse>>> GetPtVerificationsAsync()
     {
-        return await Task.FromResult(ApiResponse<string>.Ok("Not implemented yet"));
+        return await Task.FromResult(ApiResponse<IReadOnlyList<PtProfileResponse>>.Ok(new List<PtProfileResponse>(), "Not implemented yet"));
     }
 
-    public async Task<ApiResponse<string>> ApprovePtAsync(Guid ptProfileId)
+    public async Task<ApiResponse<PtProfileResponse>> ApprovePtAsync(Guid ptProfileId)
     {
-        return await Task.FromResult(ApiResponse<string>.Ok("Not implemented yet"));
+        return await Task.FromResult(ApiResponse<PtProfileResponse>.Ok(new PtProfileResponse(), "Not implemented yet"));
     }
 
-    public async Task<ApiResponse<string>> RejectPtAsync(Guid ptProfileId)
+    public async Task<ApiResponse<PtProfileResponse>> RejectPtAsync(Guid ptProfileId)
     {
-        return await Task.FromResult(ApiResponse<string>.Ok("Not implemented yet"));
+        return await Task.FromResult(ApiResponse<PtProfileResponse>.Ok(new PtProfileResponse(), "Not implemented yet"));
     }
 
-    public async Task<ApiResponse<string>> GetPaymentsAsync()
+    public async Task<ApiResponse<IReadOnlyList<AdminPaymentResponse>>> GetPaymentsAsync()
     {
-        return await Task.FromResult(ApiResponse<string>.Ok("Not implemented yet"));
+        return await Task.FromResult(ApiResponse<IReadOnlyList<AdminPaymentResponse>>.Ok(new List<AdminPaymentResponse>(), "Not implemented yet"));
     }
 
-    public async Task<ApiResponse<string>> GetPaymentByIdAsync(Guid paymentId)
+    public async Task<ApiResponse<AdminPaymentResponse>> GetPaymentByIdAsync(Guid paymentId)
     {
-        return await Task.FromResult(ApiResponse<string>.Ok("Not implemented yet"));
+        return await Task.FromResult(ApiResponse<AdminPaymentResponse>.Ok(new AdminPaymentResponse(), "Not implemented yet"));
     }
 
-    public async Task<ApiResponse<string>> GetDisputesAsync()
+    public async Task<ApiResponse<IReadOnlyList<AdminDisputeResponse>>> GetDisputesAsync()
     {
-        return await Task.FromResult(ApiResponse<string>.Ok("Not implemented yet"));
+        return await Task.FromResult(ApiResponse<IReadOnlyList<AdminDisputeResponse>>.Ok(new List<AdminDisputeResponse>(), "Not implemented yet"));
     }
 
-    public async Task<ApiResponse<string>> MarkDisputeUnderReviewAsync(Guid disputeId)
+    public async Task<ApiResponse<AdminDisputeResponse>> MarkDisputeUnderReviewAsync(Guid disputeId)
     {
-        return await Task.FromResult(ApiResponse<string>.Ok("Not implemented yet"));
+        return await Task.FromResult(ApiResponse<AdminDisputeResponse>.Ok(new AdminDisputeResponse(), "Not implemented yet"));
     }
 
-    public async Task<ApiResponse<string>> ResolveRefundCustomerAsync(Guid disputeId)
+    public async Task<ApiResponse<AdminDisputeResponse>> ResolveRefundCustomerAsync(Guid disputeId, ResolveDisputeRequest request)
     {
-        return await Task.FromResult(ApiResponse<string>.Ok("Not implemented yet"));
+        return await Task.FromResult(ApiResponse<AdminDisputeResponse>.Ok(new AdminDisputeResponse(), "Not implemented yet"));
     }
 
-    public async Task<ApiResponse<string>> ResolveReleaseToPtAsync(Guid disputeId)
+    public async Task<ApiResponse<AdminDisputeResponse>> ResolveReleaseToPtAsync(Guid disputeId, ResolveDisputeRequest request)
     {
-        return await Task.FromResult(ApiResponse<string>.Ok("Not implemented yet"));
+        return await Task.FromResult(ApiResponse<AdminDisputeResponse>.Ok(new AdminDisputeResponse(), "Not implemented yet"));
     }
 
-    public async Task<ApiResponse<string>> GetSettlementsAsync()
+    public async Task<ApiResponse<IReadOnlyList<AdminSettlementResponse>>> GetSettlementsAsync()
     {
-        return await Task.FromResult(ApiResponse<string>.Ok("Not implemented yet"));
+        return await Task.FromResult(ApiResponse<IReadOnlyList<AdminSettlementResponse>>.Ok(new List<AdminSettlementResponse>(), "Not implemented yet"));
     }
 
-    public async Task<ApiResponse<string>> ApproveSettlementAsync(Guid settlementId)
+    public async Task<ApiResponse<AdminSettlementResponse>> ApproveSettlementAsync(Guid settlementId)
     {
-        return await Task.FromResult(ApiResponse<string>.Ok("Not implemented yet"));
+        return await Task.FromResult(ApiResponse<AdminSettlementResponse>.Ok(new AdminSettlementResponse(), "Not implemented yet"));
     }
 
-    public async Task<ApiResponse<string>> MarkSettlementAsSettledAsync(Guid settlementId)
+    public async Task<ApiResponse<AdminSettlementResponse>> MarkSettlementAsSettledAsync(Guid settlementId)
     {
-        return await Task.FromResult(ApiResponse<string>.Ok("Not implemented yet"));
+        return await Task.FromResult(ApiResponse<AdminSettlementResponse>.Ok(new AdminSettlementResponse(), "Not implemented yet"));
     }
 
-    public async Task<ApiResponse<string>> GetAuditLogsAsync()
+    public async Task<ApiResponse<IReadOnlyList<AuditLogResponse>>> GetAuditLogsAsync()
     {
-        return await Task.FromResult(ApiResponse<string>.Ok("Not implemented yet"));
+        return await Task.FromResult(ApiResponse<IReadOnlyList<AuditLogResponse>>.Ok(new List<AuditLogResponse>(), "Not implemented yet"));
     }
-
 }

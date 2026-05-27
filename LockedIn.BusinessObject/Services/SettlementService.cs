@@ -1,8 +1,10 @@
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using LockedIn.BusinessObject.Common;
 using LockedIn.BusinessObject.Interfaces;
 using LockedIn.DataAccess.UnitOfWork;
+using LockedIn.BusinessObject.DTOs.Settlements;
 
 namespace LockedIn.BusinessObject.Services;
 
@@ -15,14 +17,13 @@ public class SettlementService : ISettlementService
         _unitOfWork = unitOfWork;
     }
 
-    public async Task<ApiResponse<string>> GetMySettlementsAsync()
+    public async Task<ApiResponse<IReadOnlyList<SettlementResponse>>> GetMySettlementsAsync()
     {
-        return await Task.FromResult(ApiResponse<string>.Ok("Not implemented yet"));
+        return await Task.FromResult(ApiResponse<IReadOnlyList<SettlementResponse>>.Ok(new List<SettlementResponse>(), "Not implemented yet"));
     }
 
-    public async Task<ApiResponse<string>> GetSettlementByIdAsync(Guid settlementId)
+    public async Task<ApiResponse<SettlementResponse>> GetSettlementByIdAsync(Guid settlementId)
     {
-        return await Task.FromResult(ApiResponse<string>.Ok("Not implemented yet"));
+        return await Task.FromResult(ApiResponse<SettlementResponse>.Ok(new SettlementResponse(), "Not implemented yet"));
     }
-
 }

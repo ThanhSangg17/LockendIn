@@ -2,6 +2,7 @@ using System;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using LockedIn.BusinessObject.Interfaces;
+using LockedIn.BusinessObject.DTOs.MealPlans;
 
 namespace LockedIn.Api.Controllers;
 
@@ -17,16 +18,16 @@ public class MealPlansController : ControllerBase
     }
 
     [HttpPost("generate")]
-    public async Task<IActionResult> GenerateMealPlanAsync()
+    public async Task<IActionResult> GenerateMealPlanAsync([FromBody] GenerateMealPlanRequest request)
     {
-        var result = await _service.GenerateMealPlanAsync();
+        var result = await _service.GenerateMealPlanAsync(request);
         return Ok(result);
     }
 
     [HttpPost]
-    public async Task<IActionResult> CreateMealPlanAsync()
+    public async Task<IActionResult> CreateMealPlanAsync([FromBody] CreateMealPlanRequest request)
     {
-        var result = await _service.CreateMealPlanAsync();
+        var result = await _service.CreateMealPlanAsync(request);
         return Ok(result);
     }
 
@@ -57,5 +58,4 @@ public class MealPlansController : ControllerBase
         var result = await _service.DeleteMealPlanAsync(mealPlanId);
         return Ok(result);
     }
-
 }

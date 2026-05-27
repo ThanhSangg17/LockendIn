@@ -1,7 +1,7 @@
-using System;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using LockedIn.BusinessObject.Interfaces;
+using LockedIn.BusinessObject.DTOs.Customers;
 
 namespace LockedIn.Api.Controllers;
 
@@ -24,10 +24,9 @@ public class CustomersController : ControllerBase
     }
 
     [HttpPut("me/profile")]
-    public async Task<IActionResult> UpdateMyCustomerProfileAsync()
+    public async Task<IActionResult> UpdateMyCustomerProfileAsync([FromBody] UpdateCustomerProfileRequest request)
     {
-        var result = await _service.UpdateMyCustomerProfileAsync();
+        var result = await _service.UpdateMyCustomerProfileAsync(request);
         return Ok(result);
     }
-
 }

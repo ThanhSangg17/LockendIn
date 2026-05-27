@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("LockedIn.DataAccess")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+2baa9450f3af42c986c5d8a9b45af74b3bf4f326")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+aff35149835e78c438eed2340f6b38b2383d578a")]
 [assembly: System.Reflection.AssemblyProductAttribute("LockedIn.DataAccess")]
 [assembly: System.Reflection.AssemblyTitleAttribute("LockedIn.DataAccess")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

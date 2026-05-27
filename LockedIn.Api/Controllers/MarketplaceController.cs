@@ -2,6 +2,7 @@ using System;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using LockedIn.BusinessObject.Interfaces;
+using LockedIn.BusinessObject.DTOs.Marketplace;
 
 namespace LockedIn.Api.Controllers;
 
@@ -17,9 +18,9 @@ public class MarketplaceController : ControllerBase
     }
 
     [HttpGet("pts")]
-    public async Task<IActionResult> GetPtsAsync()
+    public async Task<IActionResult> GetPtsAsync([FromQuery] PtSearchRequest request)
     {
-        var result = await _service.GetPtsAsync();
+        var result = await _service.GetPtsAsync(request);
         return Ok(result);
     }
 
@@ -43,5 +44,4 @@ public class MarketplaceController : ControllerBase
         var result = await _service.GetPtReviewsAsync(ptProfileId);
         return Ok(result);
     }
-
 }
