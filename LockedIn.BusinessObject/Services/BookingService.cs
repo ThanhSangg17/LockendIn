@@ -257,12 +257,58 @@ public class BookingService : IBookingService
             return ApiResponse<BookingResponse>.Fail("Booking can only be accepted if it is paid and pending acceptance.");
         }
 
-        booking.Status = (int)BookingStatus.Active;
-        booking.StartedAt = DateTime.UtcNow;
-        booking.UpdatedAt = DateTime.UtcNow;
+        await _unitOfWork.BeginTransactionAsync();
+        try
+        {
+            booking.Status = (int)BookingStatus.Active;
+            booking.StartedAt = DateTime.UtcNow;
+            booking.UpdatedAt = DateTime.UtcNow;
 
-        _unitOfWork.Bookings.Update(booking);
-        await _unitOfWork.SaveChangesAsync();
+            _unitOfWork.Bookings.Update(booking);
+
+            var existingWorkspace = await _unitOfWork.Workspaces.Query()
+                .FirstOrDefaultAsync(w => w.BookingId == booking.Id);
+
+            if (existingWorkspace == null)
+            {
+                var workspace = new Workspace
+                {
+                    Id = Guid.NewGuid(),
+                    BookingId = booking.Id,
+                    CustomerId = booking.CustomerId,
+                    PtProfileId = booking.PtProfileId,
+                    Status = 1,
+                    CourseNote = null,
+                    CreatedAt = DateTime.UtcNow
+                };
+                await _unitOfWork.Workspaces.AddAsync(workspace);
+            }
+
+            var existingConversation = await _unitOfWork.Conversations.Query()
+                .FirstOrDefaultAsync(c => c.BookingId == booking.Id);
+
+            if (existingConversation == null)
+            {
+                var conversation = new Conversation
+                {
+                    Id = Guid.NewGuid(),
+                    BookingId = booking.Id,
+                    CustomerId = booking.CustomerId,
+                    PtProfileId = booking.PtProfileId,
+                    FirebaseConversationId = "firebase-" + booking.Id.ToString(),
+                    CreatedAt = DateTime.UtcNow
+                };
+                await _unitOfWork.Conversations.AddAsync(conversation);
+            }
+
+            await _unitOfWork.SaveChangesAsync();
+            await _unitOfWork.CommitTransactionAsync();
+        }
+        catch (Exception ex)
+        {
+            await _unitOfWork.RollbackTransactionAsync();
+            return ApiResponse<BookingResponse>.Fail($"Failed to accept booking: {ex.Message}");
+        }
 
         var response = MapToBookingResponse(booking);
         return ApiResponse<BookingResponse>.Ok(response, "Booking accepted successfully.");
