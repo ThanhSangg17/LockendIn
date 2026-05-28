@@ -1,4 +1,5 @@
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using LockedIn.BusinessObject.Interfaces;
 using LockedIn.BusinessObject.DTOs.Users;
@@ -7,6 +8,7 @@ namespace LockedIn.Api.Controllers;
 
 [ApiController]
 [Route("api/users")]
+[Authorize]
 public class UsersController : ControllerBase
 {
     private readonly IUserService _service;

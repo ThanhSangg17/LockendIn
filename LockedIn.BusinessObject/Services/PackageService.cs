@@ -15,10 +15,12 @@ namespace LockedIn.BusinessObject.Services;
 public class PackageService : IPackageService
 {
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ICurrentUserService _currentUserService;
 
-    public PackageService(IUnitOfWork unitOfWork)
+    public PackageService(IUnitOfWork unitOfWork, ICurrentUserService currentUserService)
     {
         _unitOfWork = unitOfWork;
+        _currentUserService = currentUserService;
     }
 
     public async Task<ApiResponse<PackageResponse>> CreatePackageAsync(CreatePackageRequest request)
@@ -36,16 +38,16 @@ public class PackageService : IPackageService
             return ApiResponse<PackageResponse>.Fail("Price must be greater than 0.");
         }
 
-        var currentPt = await GetTemporaryCurrentPtProfileAsync();
-        if (currentPt == null)
+        var (pt, error) = await GetCurrentPtProfileAsync(requireApproved: true);
+        if (error != null)
         {
-            return ApiResponse<PackageResponse>.Fail("Temporary current PT profile not found.");
+            return ApiResponse<PackageResponse>.Fail(error);
         }
 
         var package = new Package
         {
             Id = Guid.NewGuid(),
-            PtProfileId = currentPt.Id,
+            PtProfileId = pt.Id,
             Name = request.Name,
             Description = request.Description,
             SessionCount = request.SessionCount,
@@ -64,14 +66,14 @@ public class PackageService : IPackageService
 
     public async Task<ApiResponse<IReadOnlyList<PackageResponse>>> GetMyPackagesAsync()
     {
-        var currentPt = await GetTemporaryCurrentPtProfileAsync();
-        if (currentPt == null)
+        var (pt, error) = await GetCurrentPtProfileAsync(requireApproved: false);
+        if (error != null)
         {
-            return ApiResponse<IReadOnlyList<PackageResponse>>.Fail("Temporary current PT profile not found.");
+            return ApiResponse<IReadOnlyList<PackageResponse>>.Fail(error);
         }
 
         var packages = await _unitOfWork.Packages.Query()
-            .Where(p => p.PtProfileId == currentPt.Id && !p.IsDeleted)
+            .Where(p => p.PtProfileId == pt.Id && !p.IsDeleted)
             .ToListAsync();
 
         var response = packages.Select(MapToPackageResponse).ToList();
@@ -107,12 +109,23 @@ public class PackageService : IPackageService
             return ApiResponse<PackageResponse>.Fail("Price must be greater than 0.");
         }
 
+        var (pt, error) = await GetCurrentPtProfileAsync(requireApproved: false);
+        if (error != null)
+        {
+            return ApiResponse<PackageResponse>.Fail(error);
+        }
+
         var package = await _unitOfWork.Packages.Query()
             .FirstOrDefaultAsync(p => p.Id == packageId && !p.IsDeleted);
 
         if (package == null)
         {
             return ApiResponse<PackageResponse>.Fail("Package not found");
+        }
+
+        if (package.PtProfileId != pt.Id)
+        {
+            return ApiResponse<PackageResponse>.Fail("You do not own this package.");
         }
 
         package.Name = request.Name;
@@ -130,12 +143,23 @@ public class PackageService : IPackageService
 
     public async Task<ApiResponse<string>> HidePackageAsync(Guid packageId)
     {
+        var (pt, error) = await GetCurrentPtProfileAsync(requireApproved: false);
+        if (error != null)
+        {
+            return ApiResponse<string>.Fail(error);
+        }
+
         var package = await _unitOfWork.Packages.Query()
             .FirstOrDefaultAsync(p => p.Id == packageId && !p.IsDeleted);
 
         if (package == null)
         {
             return ApiResponse<string>.Fail("Package not found");
+        }
+
+        if (package.PtProfileId != pt.Id)
+        {
+            return ApiResponse<string>.Fail("You do not own this package.");
         }
 
         package.IsActive = false;
@@ -149,12 +173,23 @@ public class PackageService : IPackageService
 
     public async Task<ApiResponse<string>> ShowPackageAsync(Guid packageId)
     {
+        var (pt, error) = await GetCurrentPtProfileAsync(requireApproved: true);
+        if (error != null)
+        {
+            return ApiResponse<string>.Fail(error);
+        }
+
         var package = await _unitOfWork.Packages.Query()
             .FirstOrDefaultAsync(p => p.Id == packageId && !p.IsDeleted);
 
         if (package == null)
         {
             return ApiResponse<string>.Fail("Package not found");
+        }
+
+        if (package.PtProfileId != pt.Id)
+        {
+            return ApiResponse<string>.Fail("You do not own this package.");
         }
 
         package.IsActive = true;
@@ -168,12 +203,23 @@ public class PackageService : IPackageService
 
     public async Task<ApiResponse<string>> DeletePackageAsync(Guid packageId)
     {
+        var (pt, error) = await GetCurrentPtProfileAsync(requireApproved: false);
+        if (error != null)
+        {
+            return ApiResponse<string>.Fail(error);
+        }
+
         var package = await _unitOfWork.Packages.Query()
             .FirstOrDefaultAsync(p => p.Id == packageId && !p.IsDeleted);
 
         if (package == null)
         {
             return ApiResponse<string>.Fail("Package not found");
+        }
+
+        if (package.PtProfileId != pt.Id)
+        {
+            return ApiResponse<string>.Fail("You do not own this package.");
         }
 
         package.IsDeleted = true;
@@ -188,15 +234,35 @@ public class PackageService : IPackageService
 
     #region Helper Methods
 
-    private async Task<PtProfile?> GetTemporaryCurrentPtProfileAsync()
+    private async Task<(PtProfile? Profile, string? Error)> GetCurrentPtProfileAsync(bool requireApproved = true)
     {
         // TODO: replace with JWT current user PT profile later.
-        return await _unitOfWork.PtProfiles.Query()
+        if (!_currentUserService.IsAuthenticated || !_currentUserService.UserId.HasValue)
+        {
+            return (null, "User is not authenticated.");
+        }
+
+        if (_currentUserService.Role != 2) // PersonalTrainer = 2
+        {
+            return (null, "Only personal trainers can manage packages.");
+        }
+
+        var userId = _currentUserService.UserId.Value;
+        var ptProfile = await _unitOfWork.PtProfiles.Query()
             .Include(pt => pt.User)
-            .FirstOrDefaultAsync(pt => !pt.IsDeleted && 
-                                       !pt.User.IsDeleted && 
-                                       pt.User.Status == 1 && 
-                                       pt.VerificationStatus == (int)PtVerificationStatus.Approved);
+            .FirstOrDefaultAsync(pt => pt.UserId == userId && !pt.IsDeleted);
+
+        if (ptProfile == null)
+        {
+            return (null, "PT profile not found.");
+        }
+
+        if (requireApproved && ptProfile.VerificationStatus != (int)PtVerificationStatus.Approved)
+        {
+            return (null, "PT profile is not approved.");
+        }
+
+        return (ptProfile, null);
     }
 
     private PackageResponse MapToPackageResponse(Package package)
@@ -215,4 +281,5 @@ public class PackageService : IPackageService
 
     #endregion
 }
+
 

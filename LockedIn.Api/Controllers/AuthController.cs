@@ -1,5 +1,6 @@
 using System;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using LockedIn.BusinessObject.Interfaces;
 using LockedIn.BusinessObject.DTOs.Auth;
@@ -8,6 +9,7 @@ namespace LockedIn.Api.Controllers;
 
 [ApiController]
 [Route("api/auth")]
+[Authorize]
 public class AuthController : ControllerBase
 {
     private readonly IAuthService _service;
@@ -18,6 +20,7 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("register/customer")]
+    [AllowAnonymous]
     public async Task<IActionResult> RegisterCustomerAsync([FromBody] RegisterCustomerRequest request)
     {
         var result = await _service.RegisterCustomerAsync(request);
@@ -25,6 +28,7 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("register/pt")]
+    [AllowAnonymous]
     public async Task<IActionResult> RegisterPtAsync([FromBody] RegisterPtRequest request)
     {
         var result = await _service.RegisterPtAsync(request);
@@ -32,6 +36,7 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("login")]
+    [AllowAnonymous]
     public async Task<IActionResult> LoginAsync([FromBody] LoginRequest request)
     {
         var result = await _service.LoginAsync(request);
@@ -39,6 +44,7 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("refresh-token")]
+    [AllowAnonymous]
     public async Task<IActionResult> RefreshTokenAsync([FromBody] RefreshTokenRequest request)
     {
         var result = await _service.RefreshTokenAsync(request);
@@ -53,6 +59,7 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("forgot-password")]
+    [AllowAnonymous]
     public async Task<IActionResult> ForgotPasswordAsync([FromBody] ForgotPasswordRequest request)
     {
         var result = await _service.ForgotPasswordAsync(request);
@@ -60,6 +67,7 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("reset-password")]
+    [AllowAnonymous]
     public async Task<IActionResult> ResetPasswordAsync([FromBody] ResetPasswordRequest request)
     {
         var result = await _service.ResetPasswordAsync(request);
@@ -67,6 +75,7 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("verify-email")]
+    [AllowAnonymous]
     public async Task<IActionResult> VerifyEmailAsync([FromBody] VerifyEmailRequest request)
     {
         var result = await _service.VerifyEmailAsync(request);

@@ -1,4 +1,9 @@
+using System;
+using System.Text;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi;
 using LockedIn.DataAccess.Models;
 using LockedIn.DataAccess.UnitOfWork;
 using LockedIn.DataAccess.Interfaces;
@@ -63,7 +68,40 @@ namespace LockedIn.Api
             builder.Services.AddScoped<INotificationService, NotificationService>();
             builder.Services.AddScoped<IAdminService, AdminService>();
 
-            // 5. CORS
+            // Current User Context Services
+            builder.Services.AddHttpContextAccessor();
+            builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
+
+            // 5. JWT Authentication
+            var jwtSecretKey = builder.Configuration["Jwt:SecretKey"]!;
+            builder.Services.AddAuthentication(options =>
+            {
+                options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+                options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+            })
+            .AddJwtBearer(options =>
+            {
+                options.TokenValidationParameters = new TokenValidationParameters
+                {
+                    ValidateIssuer = true,
+                    ValidateAudience = true,
+                    ValidateLifetime = true,
+                    ValidateIssuerSigningKey = true,
+                    ValidIssuer = builder.Configuration["Jwt:Issuer"],
+                    ValidAudience = builder.Configuration["Jwt:Audience"],
+                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecretKey))
+                };
+                options.Events = new JwtBearerEvents
+                {
+                    OnAuthenticationFailed = context =>
+                    {
+                        Console.WriteLine("JWT Authentication failed: " + context.Exception.Message);
+                        return Task.CompletedTask;
+                    }
+                };
+            });
+
+            // 6. CORS
             builder.Services.AddCors(options =>
             {
                 options.AddPolicy("AllowFrontend", policy =>
@@ -74,9 +112,30 @@ namespace LockedIn.Api
                 });
             });
 
-            // 6. Swagger Services
+            // 7. Swagger Services with Bearer Auth Support
             builder.Services.AddEndpointsApiExplorer();
-            builder.Services.AddSwaggerGen();
+            builder.Services.AddSwaggerGen(c =>
+            {
+                c.SwaggerDoc("v1", new OpenApiInfo
+                {
+                    Title = "LockedIn API",
+                    Version = "v1"
+                });
+
+                c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+                {
+                    Description = "Enter JWT token with Bearer prefix. Example: Bearer eyJhbGciOi...",
+                    Name = "Authorization",
+                    In = ParameterLocation.Header,
+                    Type = SecuritySchemeType.ApiKey,
+                    Scheme = "Bearer"
+                });
+
+                c.AddSecurityRequirement(document => new OpenApiSecurityRequirement
+                {
+                    [new OpenApiSecuritySchemeReference("Bearer", document)] = new List<string>()
+                });
+            });
 
             var app = builder.Build();
 
@@ -111,3 +170,4 @@ namespace LockedIn.Api
         }
     }
 }
+

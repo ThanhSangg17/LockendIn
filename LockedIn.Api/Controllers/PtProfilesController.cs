@@ -1,5 +1,6 @@
 using System;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using LockedIn.BusinessObject.Interfaces;
 using LockedIn.BusinessObject.DTOs.PtProfiles;
@@ -8,6 +9,7 @@ namespace LockedIn.Api.Controllers;
 
 [ApiController]
 [Route("api/pts")]
+[Authorize]
 public class PtProfilesController : ControllerBase
 {
     private readonly IPtProfileService _service;

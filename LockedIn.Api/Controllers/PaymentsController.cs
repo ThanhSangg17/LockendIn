@@ -1,5 +1,6 @@
 using System;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using LockedIn.BusinessObject.Interfaces;
 using LockedIn.BusinessObject.DTOs.Payments;
@@ -8,6 +9,7 @@ namespace LockedIn.Api.Controllers;
 
 [ApiController]
 [Route("api/payments")]
+[Authorize]
 public class PaymentsController : ControllerBase
 {
     private readonly IPaymentService _service;
@@ -39,6 +41,7 @@ public class PaymentsController : ControllerBase
     }
 
     [HttpPost("payos/webhook")]
+    [AllowAnonymous]
     public async Task<IActionResult> HandlePayOsWebhookAsync([FromBody] PayOsWebhookRequest request)
     {
         var result = await _service.HandlePayOsWebhookAsync(request);

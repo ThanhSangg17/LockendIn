@@ -1,5 +1,6 @@
 using System;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using LockedIn.BusinessObject.Interfaces;
 using LockedIn.BusinessObject.DTOs.MealPlans;
@@ -8,6 +9,7 @@ namespace LockedIn.Api.Controllers;
 
 [ApiController]
 [Route("api/meal-plans")]
+[Authorize]
 public class MealPlansController : ControllerBase
 {
     private readonly IMealPlanService _service;

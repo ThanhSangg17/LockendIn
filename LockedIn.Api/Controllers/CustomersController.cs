@@ -1,4 +1,5 @@
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using LockedIn.BusinessObject.Interfaces;
 using LockedIn.BusinessObject.DTOs.Customers;
@@ -7,6 +8,7 @@ namespace LockedIn.Api.Controllers;
 
 [ApiController]
 [Route("api/customers")]
+[Authorize]
 public class CustomersController : ControllerBase
 {
     private readonly ICustomerService _service;

@@ -22,11 +22,13 @@ public class AuthService : IAuthService
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly IConfiguration _configuration;
+    private readonly ICurrentUserService _currentUserService;
 
-    public AuthService(IUnitOfWork unitOfWork, IConfiguration configuration)
+    public AuthService(IUnitOfWork unitOfWork, IConfiguration configuration, ICurrentUserService currentUserService)
     {
         _unitOfWork = unitOfWork;
         _configuration = configuration;
+        _currentUserService = currentUserService;
     }
 
     public async Task<ApiResponse<AuthResponse>> RegisterCustomerAsync(RegisterCustomerRequest request)
@@ -342,20 +344,38 @@ public class AuthService : IAuthService
 
     public async Task<ApiResponse<CurrentUserResponse>> GetMeAsync()
     {
-        return await Task.FromResult(ApiResponse<CurrentUserResponse>.Ok(new CurrentUserResponse
+        if (!_currentUserService.IsAuthenticated || !_currentUserService.UserId.HasValue)
         {
-            Email = string.Empty,
-            FullName = string.Empty
-        }, "Current user context not implemented yet"));
+            return ApiResponse<CurrentUserResponse>.Fail("Unauthorized");
+        }
+
+        var userId = _currentUserService.UserId.Value;
+        var user = await _unitOfWork.Users.Query()
+            .FirstOrDefaultAsync(u => u.Id == userId && !u.IsDeleted);
+
+        if (user == null || user.Status != 1)
+        {
+            return ApiResponse<CurrentUserResponse>.Fail("User not found");
+        }
+
+        var response = new CurrentUserResponse
+        {
+            UserId = user.Id,
+            Email = user.Email,
+            FullName = user.FullName,
+            Role = user.Role
+        };
+
+        return ApiResponse<CurrentUserResponse>.Ok(response, "Current user retrieved successfully.");
     }
 
     #region Helper Methods
 
     private string GenerateAccessToken(User user)
     {
-        var secretKey = _configuration["Jwt:SecretKey"] ?? "CHANGE_THIS_TO_A_LONG_SECRET_KEY_FOR_DEVELOPMENT_ONLY";
-        var issuer = _configuration["Jwt:Issuer"] ?? "LockedIn";
-        var audience = _configuration["Jwt:Audience"] ?? "LockedInClient";
+        var secretKey = _configuration["Jwt:SecretKey"]!;
+        var issuer = _configuration["Jwt:Issuer"]!;
+        var audience = _configuration["Jwt:Audience"]!;
         var expirationMinutes = int.Parse(_configuration["Jwt:AccessTokenExpirationMinutes"] ?? "60");
 
         var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey));
@@ -363,7 +383,9 @@ public class AuthService : IAuthService
 
         var claims = new[]
         {
+            new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
             new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
+            new Claim(ClaimTypes.Email, user.Email),
             new Claim(JwtRegisteredClaimNames.Email, user.Email),
             new Claim(ClaimTypes.Role, user.Role.ToString()),
             new Claim("role", user.Role.ToString()),

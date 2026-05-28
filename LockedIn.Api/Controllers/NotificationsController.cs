@@ -1,5 +1,6 @@
 using System;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using LockedIn.BusinessObject.Interfaces;
 
@@ -7,6 +8,7 @@ namespace LockedIn.Api.Controllers;
 
 [ApiController]
 [Route("api/notifications")]
+[Authorize]
 public class NotificationsController : ControllerBase
 {
     private readonly INotificationService _service;
