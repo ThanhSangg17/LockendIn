@@ -1,9 +1,19 @@
 using System;
 using System.Collections.Generic;
+using System.IdentityModel.Tokens.Jwt;
+using System.Linq;
+using System.Security.Claims;
+using System.Security.Cryptography;
+using System.Text;
 using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.IdentityModel.Tokens;
+using BCrypt.Net;
 using LockedIn.BusinessObject.Common;
 using LockedIn.BusinessObject.Interfaces;
 using LockedIn.DataAccess.UnitOfWork;
+using LockedIn.DataAccess.Models;
 using LockedIn.BusinessObject.DTOs.Auth;
 
 namespace LockedIn.BusinessObject.Services;
@@ -11,35 +21,308 @@ namespace LockedIn.BusinessObject.Services;
 public class AuthService : IAuthService
 {
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IConfiguration _configuration;
 
-    public AuthService(IUnitOfWork unitOfWork)
+    public AuthService(IUnitOfWork unitOfWork, IConfiguration configuration)
     {
         _unitOfWork = unitOfWork;
+        _configuration = configuration;
     }
 
     public async Task<ApiResponse<AuthResponse>> RegisterCustomerAsync(RegisterCustomerRequest request)
     {
-        return await Task.FromResult(ApiResponse<AuthResponse>.Ok(new AuthResponse(), "Not implemented yet"));
+        var validationError = ValidateRegisterInput(request.Email, request.Password, request.FullName);
+        if (validationError != null)
+        {
+            return ApiResponse<AuthResponse>.Fail(validationError);
+        }
+
+        var emailExists = await _unitOfWork.Users.Query()
+            .AnyAsync(u => u.Email == request.Email);
+
+        if (emailExists)
+        {
+            return ApiResponse<AuthResponse>.Fail("Email is already in use.");
+        }
+
+        var hashedPassword = BCrypt.Net.BCrypt.HashPassword(request.Password);
+
+        await _unitOfWork.BeginTransactionAsync();
+        try
+        {
+            var user = new User
+            {
+                Id = Guid.NewGuid(),
+                Email = request.Email,
+                PasswordHash = hashedPassword,
+                FullName = request.FullName,
+                Phone = request.Phone,
+                Role = 1, // Customer
+                Status = 1, // Active
+                EmailVerified = false,
+                IsDeleted = false,
+                CreatedAt = DateTime.UtcNow
+            };
+            await _unitOfWork.Users.AddAsync(user);
+
+            var customerProfile = new CustomerProfile
+            {
+                Id = Guid.NewGuid(),
+                UserId = user.Id,
+                IsDeleted = false,
+                CreatedAt = DateTime.UtcNow
+            };
+            await _unitOfWork.CustomerProfiles.AddAsync(customerProfile);
+
+            var accessToken = GenerateAccessToken(user);
+            var rawRefreshToken = GenerateRefreshToken();
+            var refreshTokenHash = HashRefreshToken(rawRefreshToken);
+
+            var refreshTokenExpiresDays = int.Parse(_configuration["Jwt:RefreshTokenExpirationDays"] ?? "7");
+            var refreshToken = new RefreshToken
+            {
+                Id = Guid.NewGuid(),
+                UserId = user.Id,
+                TokenHash = refreshTokenHash,
+                ExpiresAt = DateTime.UtcNow.AddDays(refreshTokenExpiresDays),
+                CreatedAt = DateTime.UtcNow
+            };
+            await _unitOfWork.RefreshTokens.AddAsync(refreshToken);
+
+            await _unitOfWork.SaveChangesAsync();
+            await _unitOfWork.CommitTransactionAsync();
+
+            return ApiResponse<AuthResponse>.Ok(new AuthResponse
+            {
+                UserId = user.Id,
+                Email = user.Email,
+                FullName = user.FullName,
+                Role = user.Role,
+                AccessToken = accessToken,
+                RefreshToken = rawRefreshToken
+            }, "Registration successful.");
+        }
+        catch (Exception ex)
+        {
+            await _unitOfWork.RollbackTransactionAsync();
+            return ApiResponse<AuthResponse>.Fail($"Registration failed: {ex.Message}");
+        }
     }
 
     public async Task<ApiResponse<AuthResponse>> RegisterPtAsync(RegisterPtRequest request)
     {
-        return await Task.FromResult(ApiResponse<AuthResponse>.Ok(new AuthResponse(), "Not implemented yet"));
+        var validationError = ValidateRegisterInput(request.Email, request.Password, request.FullName);
+        if (validationError != null)
+        {
+            return ApiResponse<AuthResponse>.Fail(validationError);
+        }
+
+        var emailExists = await _unitOfWork.Users.Query()
+            .AnyAsync(u => u.Email == request.Email);
+
+        if (emailExists)
+        {
+            return ApiResponse<AuthResponse>.Fail("Email is already in use.");
+        }
+
+        var hashedPassword = BCrypt.Net.BCrypt.HashPassword(request.Password);
+
+        await _unitOfWork.BeginTransactionAsync();
+        try
+        {
+            var user = new User
+            {
+                Id = Guid.NewGuid(),
+                Email = request.Email,
+                PasswordHash = hashedPassword,
+                FullName = request.FullName,
+                Phone = request.Phone,
+                Role = 2, // PT
+                Status = 1, // Active
+                EmailVerified = false,
+                IsDeleted = false,
+                CreatedAt = DateTime.UtcNow
+            };
+            await _unitOfWork.Users.AddAsync(user);
+
+            var ptProfile = new PtProfile
+            {
+                Id = Guid.NewGuid(),
+                UserId = user.Id,
+                Bio = request.Bio,
+                Specialization = request.Specialization,
+                ExperienceYears = request.ExperienceYears,
+                VerificationStatus = 1,
+                AverageRating = 0,
+                TotalReviews = 0,
+                IsDeleted = false,
+                CreatedAt = DateTime.UtcNow
+            };
+            await _unitOfWork.PtProfiles.AddAsync(ptProfile);
+
+            var accessToken = GenerateAccessToken(user);
+            var rawRefreshToken = GenerateRefreshToken();
+            var refreshTokenHash = HashRefreshToken(rawRefreshToken);
+
+            var refreshTokenExpiresDays = int.Parse(_configuration["Jwt:RefreshTokenExpirationDays"] ?? "7");
+            var refreshToken = new RefreshToken
+            {
+                Id = Guid.NewGuid(),
+                UserId = user.Id,
+                TokenHash = refreshTokenHash,
+                ExpiresAt = DateTime.UtcNow.AddDays(refreshTokenExpiresDays),
+                CreatedAt = DateTime.UtcNow
+            };
+            await _unitOfWork.RefreshTokens.AddAsync(refreshToken);
+
+            await _unitOfWork.SaveChangesAsync();
+            await _unitOfWork.CommitTransactionAsync();
+
+            return ApiResponse<AuthResponse>.Ok(new AuthResponse
+            {
+                UserId = user.Id,
+                Email = user.Email,
+                FullName = user.FullName,
+                Role = user.Role,
+                AccessToken = accessToken,
+                RefreshToken = rawRefreshToken
+            }, "Registration successful.");
+        }
+        catch (Exception ex)
+        {
+            await _unitOfWork.RollbackTransactionAsync();
+            return ApiResponse<AuthResponse>.Fail($"Registration failed: {ex.Message}");
+        }
     }
 
     public async Task<ApiResponse<AuthResponse>> LoginAsync(LoginRequest request)
     {
-        return await Task.FromResult(ApiResponse<AuthResponse>.Ok(new AuthResponse(), "Not implemented yet"));
+        var validationError = ValidateLoginInput(request.Email, request.Password);
+        if (validationError != null)
+        {
+            return ApiResponse<AuthResponse>.Fail(validationError);
+        }
+
+        var user = await _unitOfWork.Users.Query()
+            .FirstOrDefaultAsync(u => u.Email == request.Email);
+
+        if (user == null || user.IsDeleted)
+        {
+            return ApiResponse<AuthResponse>.Fail("Invalid email or password");
+        }
+
+        if (user.Status != 1)
+        {
+            return ApiResponse<AuthResponse>.Fail("Invalid email or password");
+        }
+
+        var isPasswordValid = BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash);
+        if (!isPasswordValid)
+        {
+            return ApiResponse<AuthResponse>.Fail("Invalid email or password");
+        }
+
+        var accessToken = GenerateAccessToken(user);
+        var rawRefreshToken = GenerateRefreshToken();
+        var refreshTokenHash = HashRefreshToken(rawRefreshToken);
+
+        var refreshTokenExpiresDays = int.Parse(_configuration["Jwt:RefreshTokenExpirationDays"] ?? "7");
+        var refreshToken = new RefreshToken
+        {
+            Id = Guid.NewGuid(),
+            UserId = user.Id,
+            TokenHash = refreshTokenHash,
+            ExpiresAt = DateTime.UtcNow.AddDays(refreshTokenExpiresDays),
+            CreatedAt = DateTime.UtcNow
+        };
+        await _unitOfWork.RefreshTokens.AddAsync(refreshToken);
+
+        await _unitOfWork.SaveChangesAsync();
+
+        return ApiResponse<AuthResponse>.Ok(new AuthResponse
+        {
+            UserId = user.Id,
+            Email = user.Email,
+            FullName = user.FullName,
+            Role = user.Role,
+            AccessToken = accessToken,
+            RefreshToken = rawRefreshToken
+        }, "Login successful.");
     }
 
     public async Task<ApiResponse<AuthResponse>> RefreshTokenAsync(RefreshTokenRequest request)
     {
-        return await Task.FromResult(ApiResponse<AuthResponse>.Ok(new AuthResponse(), "Not implemented yet"));
+        if (string.IsNullOrWhiteSpace(request.RefreshToken))
+        {
+            return ApiResponse<AuthResponse>.Fail("Refresh token is required.");
+        }
+
+        var hashedToken = HashRefreshToken(request.RefreshToken);
+
+        var tokenRecord = await _unitOfWork.RefreshTokens.Query()
+            .Include(t => t.User)
+            .FirstOrDefaultAsync(t => t.TokenHash == hashedToken);
+
+        if (tokenRecord == null)
+        {
+            return ApiResponse<AuthResponse>.Fail("Invalid refresh token.");
+        }
+
+        if (tokenRecord.RevokedAt != null)
+        {
+            return ApiResponse<AuthResponse>.Fail("Refresh token has been revoked.");
+        }
+
+        if (tokenRecord.ExpiresAt <= DateTime.UtcNow)
+        {
+            return ApiResponse<AuthResponse>.Fail("Refresh token has expired.");
+        }
+
+        await _unitOfWork.BeginTransactionAsync();
+        try
+        {
+            tokenRecord.RevokedAt = DateTime.UtcNow;
+            _unitOfWork.RefreshTokens.Update(tokenRecord);
+
+            var newRawRefreshToken = GenerateRefreshToken();
+            var newRefreshTokenHash = HashRefreshToken(newRawRefreshToken);
+
+            var refreshTokenExpiresDays = int.Parse(_configuration["Jwt:RefreshTokenExpirationDays"] ?? "7");
+            var newRefreshTokenRecord = new RefreshToken
+            {
+                Id = Guid.NewGuid(),
+                UserId = tokenRecord.UserId,
+                TokenHash = newRefreshTokenHash,
+                ExpiresAt = DateTime.UtcNow.AddDays(refreshTokenExpiresDays),
+                CreatedAt = DateTime.UtcNow
+            };
+            await _unitOfWork.RefreshTokens.AddAsync(newRefreshTokenRecord);
+
+            await _unitOfWork.SaveChangesAsync();
+            await _unitOfWork.CommitTransactionAsync();
+
+            var newAccessToken = GenerateAccessToken(tokenRecord.User);
+
+            return ApiResponse<AuthResponse>.Ok(new AuthResponse
+            {
+                UserId = tokenRecord.User.Id,
+                Email = tokenRecord.User.Email,
+                FullName = tokenRecord.User.FullName,
+                Role = tokenRecord.User.Role,
+                AccessToken = newAccessToken,
+                RefreshToken = newRawRefreshToken
+            }, "Token refreshed successfully.");
+        }
+        catch (Exception ex)
+        {
+            await _unitOfWork.RollbackTransactionAsync();
+            return ApiResponse<AuthResponse>.Fail($"Failed to refresh token: {ex.Message}");
+        }
     }
 
     public async Task<ApiResponse<string>> LogoutAsync()
     {
-        return await Task.FromResult(ApiResponse<string>.Ok(string.Empty, "Not implemented yet"));
+        return await Task.FromResult(ApiResponse<string>.Ok("Logged out successfully", "Logged out successfully"));
     }
 
     public async Task<ApiResponse<string>> ForgotPasswordAsync(ForgotPasswordRequest request)
@@ -59,7 +342,82 @@ public class AuthService : IAuthService
 
     public async Task<ApiResponse<CurrentUserResponse>> GetMeAsync()
     {
-        return await Task.FromResult(ApiResponse<CurrentUserResponse>.Ok(new CurrentUserResponse(), "Not implemented yet"));
+        return await Task.FromResult(ApiResponse<CurrentUserResponse>.Ok(new CurrentUserResponse
+        {
+            Email = string.Empty,
+            FullName = string.Empty
+        }, "Current user context not implemented yet"));
     }
 
+    #region Helper Methods
+
+    private string GenerateAccessToken(User user)
+    {
+        var secretKey = _configuration["Jwt:SecretKey"] ?? "CHANGE_THIS_TO_A_LONG_SECRET_KEY_FOR_DEVELOPMENT_ONLY";
+        var issuer = _configuration["Jwt:Issuer"] ?? "LockedIn";
+        var audience = _configuration["Jwt:Audience"] ?? "LockedInClient";
+        var expirationMinutes = int.Parse(_configuration["Jwt:AccessTokenExpirationMinutes"] ?? "60");
+
+        var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey));
+        var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
+
+        var claims = new[]
+        {
+            new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
+            new Claim(JwtRegisteredClaimNames.Email, user.Email),
+            new Claim(ClaimTypes.Role, user.Role.ToString()),
+            new Claim("role", user.Role.ToString()),
+            new Claim(ClaimTypes.Name, user.FullName),
+            new Claim("name", user.FullName)
+        };
+
+        var token = new JwtSecurityToken(
+            issuer: issuer,
+            audience: audience,
+            claims: claims,
+            expires: DateTime.UtcNow.AddMinutes(expirationMinutes),
+            signingCredentials: credentials);
+
+        return new JwtSecurityTokenHandler().WriteToken(token);
+    }
+
+    private string GenerateRefreshToken()
+    {
+        var randomNumber = new byte[32];
+        using var rng = RandomNumberGenerator.Create();
+        rng.GetBytes(randomNumber);
+        return Convert.ToBase64String(randomNumber);
+    }
+
+    private string HashRefreshToken(string token)
+    {
+        using var sha256 = SHA256.Create();
+        var hashedBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(token));
+        return Convert.ToBase64String(hashedBytes);
+    }
+
+    private string? ValidateRegisterInput(string email, string password, string fullName)
+    {
+        if (string.IsNullOrWhiteSpace(email))
+            return "Email is required.";
+        if (string.IsNullOrWhiteSpace(password))
+            return "Password is required.";
+        if (string.IsNullOrWhiteSpace(fullName))
+            return "Full Name is required.";
+        if (password.Length < 6)
+            return "Password must be at least 6 characters long.";
+        return null;
+    }
+
+    private string? ValidateLoginInput(string email, string password)
+    {
+        if (string.IsNullOrWhiteSpace(email))
+            return "Email is required.";
+        if (string.IsNullOrWhiteSpace(password))
+            return "Password is required.";
+        return null;
+    }
+
+    #endregion
 }
+

@@ -81,4 +81,5 @@ D:\SU26_Ki_8\EXE\LockedIn\LockedIn.Api\obj\Debug\net8.0\refint\LockedIn.Api.dll
 D:\SU26_Ki_8\EXE\LockedIn\LockedIn.Api\obj\Debug\net8.0\LockedIn.Api.pdb
 D:\SU26_Ki_8\EXE\LockedIn\LockedIn.Api\obj\Debug\net8.0\LockedIn.Api.genruntimeconfig.cache
 D:\SU26_Ki_8\EXE\LockedIn\LockedIn.Api\obj\Debug\net8.0\ref\LockedIn.Api.dll
+D:\SU26_Ki_8\EXE\LockedIn\LockedIn.Api\bin\Debug\net8.0\BCrypt.Net-Next.dll
 D:\SU26_Ki_8\EXE\LockedIn\LockedIn.Api\obj\Debug\net8.0\staticwebassets.upToDateCheck.txt
