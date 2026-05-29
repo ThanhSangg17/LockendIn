@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("LockedIn.Api")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+cc875f4ffb14dc411554a15d7618d60b4baff44c")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+d41e8b0c5e875aa205c399c5acd03335df46ed4f")]
 [assembly: System.Reflection.AssemblyProductAttribute("LockedIn.Api")]
 [assembly: System.Reflection.AssemblyTitleAttribute("LockedIn.Api")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

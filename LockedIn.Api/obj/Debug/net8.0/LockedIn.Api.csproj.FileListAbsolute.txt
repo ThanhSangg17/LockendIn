@@ -83,4 +83,3 @@ D:\SU26_Ki_8\EXE\LockedIn\LockedIn.Api\obj\Debug\net8.0\LockedIn.Api.genruntimec
 D:\SU26_Ki_8\EXE\LockedIn\LockedIn.Api\obj\Debug\net8.0\ref\LockedIn.Api.dll
 D:\SU26_Ki_8\EXE\LockedIn\LockedIn.Api\bin\Debug\net8.0\BCrypt.Net-Next.dll
 D:\SU26_Ki_8\EXE\LockedIn\LockedIn.Api\bin\Debug\net8.0\Microsoft.AspNetCore.Authentication.JwtBearer.dll
-D:\SU26_Ki_8\EXE\LockedIn\LockedIn.Api\obj\Debug\net8.0\staticwebassets.upToDateCheck.txt

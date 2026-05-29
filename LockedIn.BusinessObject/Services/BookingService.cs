@@ -402,13 +402,55 @@ public class BookingService : IBookingService
             return ApiResponse<BookingResponse>.Fail("Booking can only be completed if it is active.");
         }
 
-        booking.Status = (int)BookingStatus.CompletedPendingSettlement;
-        booking.CompletedAt = DateTime.UtcNow;
-        booking.SettlementDueAt = DateTime.UtcNow.AddHours(48);
-        booking.UpdatedAt = DateTime.UtcNow;
+        await _unitOfWork.BeginTransactionAsync();
+        try
+        {
+            booking.Status = (int)BookingStatus.CompletedPendingSettlement;
+            booking.CompletedAt = DateTime.UtcNow;
+            booking.SettlementDueAt = DateTime.UtcNow.AddHours(48);
+            booking.UpdatedAt = DateTime.UtcNow;
 
-        _unitOfWork.Bookings.Update(booking);
-        await _unitOfWork.SaveChangesAsync();
+            _unitOfWork.Bookings.Update(booking);
+
+            var existingSettlement = await _unitOfWork.Settlements.Query()
+                .FirstOrDefaultAsync(s => s.BookingId == booking.Id);
+
+            if (existingSettlement == null)
+            {
+                var platformFee = booking.TotalAmount * 0.10m;
+                var netAmount = booking.TotalAmount - platformFee;
+
+                var settlement = new Settlement
+                {
+                    Id = Guid.NewGuid(),
+                    BookingId = booking.Id,
+                    PtProfileId = booking.PtProfileId,
+                    GrossAmount = booking.TotalAmount,
+                    PlatformFee = platformFee,
+                    NetAmount = netAmount,
+                    Status = (int)SettlementStatus.Pending,
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                var openDispute = await _unitOfWork.Disputes.Query()
+                    .AnyAsync(d => d.BookingId == booking.Id && (d.Status == (int)DisputeStatus.Open || d.Status == (int)DisputeStatus.UnderReview));
+
+                if (openDispute)
+                {
+                    settlement.Status = (int)SettlementStatus.BlockedByDispute;
+                }
+
+                await _unitOfWork.Settlements.AddAsync(settlement);
+            }
+
+            await _unitOfWork.SaveChangesAsync();
+            await _unitOfWork.CommitTransactionAsync();
+        }
+        catch (Exception ex)
+        {
+            await _unitOfWork.RollbackTransactionAsync();
+            return ApiResponse<BookingResponse>.Fail($"Failed to complete booking: {ex.Message}");
+        }
 
         var response = MapToBookingResponse(booking);
         return ApiResponse<BookingResponse>.Ok(response, "Booking completed successfully.");
