@@ -1139,6 +1139,59 @@
   },
   {
     "ContainingType": "LockedIn.Api.Controllers.ReviewsController",
+    "Method": "GetReviewByIdAsync",
+    "RelativePath": "api/reviews/{reviewId}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "reviewId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LockedIn.Api.Controllers.ReviewsController",
+    "Method": "HideReviewAsync",
+    "RelativePath": "api/reviews/{reviewId}/hide",
+    "HttpMethod": "PATCH",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "reviewId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LockedIn.Api.Controllers.ReviewsController",
+    "Method": "ReplyReviewAsync",
+    "RelativePath": "api/reviews/{reviewId}/reply",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "reviewId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      },
+      {
+        "Name": "request",
+        "Type": "LockedIn.BusinessObject.DTOs.Reviews.ReplyReviewRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LockedIn.Api.Controllers.ReviewsController",
     "Method": "GetMyReviewsAsync",
     "RelativePath": "api/reviews/my",
     "HttpMethod": "GET",

@@ -152,16 +152,20 @@ public class MarketplaceService : IMarketplaceService
             .Where(r => r.PtProfileId == ptProfileId && !r.IsHidden)
             .ToListAsync();
 
-        var response = reviews.Select(r => new ReviewResponse
-        {
-            Id = r.Id,
-            BookingId = r.BookingId,
-            CustomerId = r.CustomerId,
-            PtProfileId = r.PtProfileId,
-            Rating = r.Rating,
-            Comment = r.Comment,
-            IsHidden = r.IsHidden,
-            CreatedAt = r.CreatedAt
+        var response = reviews.Select(r => {
+            var parts = r.Comment?.Split("|||", 2);
+            return new ReviewResponse
+            {
+                Id = r.Id,
+                BookingId = r.BookingId,
+                CustomerId = r.CustomerId,
+                PtProfileId = r.PtProfileId,
+                Rating = r.Rating,
+                Comment = parts?.Length > 0 ? parts[0] : null,
+                PtReply = parts?.Length > 1 ? parts[1] : null,
+                IsHidden = r.IsHidden,
+                CreatedAt = r.CreatedAt
+            };
         }).ToList();
 
         return ApiResponse<IReadOnlyList<ReviewResponse>>.Ok(response, "Reviews retrieved successfully.");

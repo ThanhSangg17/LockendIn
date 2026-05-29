@@ -13,4 +13,7 @@ public interface IReviewService
     Task<ApiResponse<IReadOnlyList<ReviewResponse>>> GetReviewsByPtAsync(Guid ptProfileId);
     Task<ApiResponse<ReviewResponse>> UpdateReviewAsync(Guid reviewId, UpdateReviewRequest request);
     Task<ApiResponse<string>> DeleteReviewAsync(Guid reviewId);
+    Task<ApiResponse<ReviewResponse>> ReplyReviewAsync(Guid reviewId, string reply);
+    Task<ApiResponse<bool>> HideReviewAsync(Guid reviewId);
+    Task<ApiResponse<ReviewResponse>> GetReviewByIdAsync(Guid reviewId);
 }

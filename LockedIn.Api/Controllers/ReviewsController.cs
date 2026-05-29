@@ -34,6 +34,7 @@ public class ReviewsController : ControllerBase
     }
 
     [HttpGet("pt/{ptProfileId}")]
+    [AllowAnonymous]
     public async Task<IActionResult> GetReviewsByPtAsync(Guid ptProfileId)
     {
         var result = await _service.GetReviewsByPtAsync(ptProfileId);
@@ -51,6 +52,28 @@ public class ReviewsController : ControllerBase
     public async Task<IActionResult> DeleteReviewAsync(Guid reviewId)
     {
         var result = await _service.DeleteReviewAsync(reviewId);
+        return Ok(result);
+    }
+
+    [HttpPost("{reviewId}/reply")]
+    public async Task<IActionResult> ReplyReviewAsync(Guid reviewId, [FromBody] ReplyReviewRequest request)
+    {
+        var result = await _service.ReplyReviewAsync(reviewId, request.Reply);
+        return Ok(result);
+    }
+
+    [HttpPatch("{reviewId}/hide")]
+    public async Task<IActionResult> HideReviewAsync(Guid reviewId)
+    {
+        var result = await _service.HideReviewAsync(reviewId);
+        return Ok(result);
+    }
+
+    [HttpGet("{reviewId}")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetReviewByIdAsync(Guid reviewId)
+    {
+        var result = await _service.GetReviewByIdAsync(reviewId);
         return Ok(result);
     }
 }
