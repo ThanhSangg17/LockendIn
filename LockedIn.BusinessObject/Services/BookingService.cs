@@ -301,6 +301,31 @@ public class BookingService : IBookingService
                 await _unitOfWork.Conversations.AddAsync(conversation);
             }
 
+            try
+            {
+                var customerProfile = await _unitOfWork.CustomerProfiles.Query()
+                    .FirstOrDefaultAsync(c => c.Id == booking.CustomerId);
+                if (customerProfile != null)
+                {
+                    var notification = new Notification
+                    {
+                        Id = Guid.NewGuid(),
+                        UserId = customerProfile.UserId,
+                        Title = "Booking accepted",
+                        Content = "Your personal trainer accepted the booking.",
+                        Type = (int)NotificationType.Booking,
+                        IsRead = false,
+                        IsDeleted = false,
+                        CreatedAt = DateTime.UtcNow
+                    };
+                    await _unitOfWork.Notifications.AddAsync(notification);
+                }
+            }
+            catch
+            {
+                // silently ignore
+            }
+
             await _unitOfWork.SaveChangesAsync();
             await _unitOfWork.CommitTransactionAsync();
         }
@@ -441,6 +466,31 @@ public class BookingService : IBookingService
                 }
 
                 await _unitOfWork.Settlements.AddAsync(settlement);
+            }
+
+            try
+            {
+                var customerProfile = await _unitOfWork.CustomerProfiles.Query()
+                    .FirstOrDefaultAsync(c => c.Id == booking.CustomerId);
+                if (customerProfile != null)
+                {
+                    var notification = new Notification
+                    {
+                        Id = Guid.NewGuid(),
+                        UserId = customerProfile.UserId,
+                        Title = "Booking completed",
+                        Content = "Your booking has been completed. You can now leave a review.",
+                        Type = (int)NotificationType.Booking,
+                        IsRead = false,
+                        IsDeleted = false,
+                        CreatedAt = DateTime.UtcNow
+                    };
+                    await _unitOfWork.Notifications.AddAsync(notification);
+                }
+            }
+            catch
+            {
+                // silently ignore
             }
 
             await _unitOfWork.SaveChangesAsync();

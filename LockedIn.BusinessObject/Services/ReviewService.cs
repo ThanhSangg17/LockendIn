@@ -85,6 +85,26 @@ public class ReviewService : IReviewService
         };
 
         await _unitOfWork.Reviews.AddAsync(review);
+
+        try
+        {
+            var auditLog = new AuditLog
+            {
+                Id = Guid.NewGuid(),
+                ActorUserId = _currentUserService.UserId!.Value,
+                Action = "CreateReview",
+                EntityName = "Review",
+                EntityId = review.Id,
+                MetadataJson = System.Text.Json.JsonSerializer.Serialize(new { BookingId = booking.Id, Rating = review.Rating }),
+                CreatedAt = DateTime.UtcNow
+            };
+            await _unitOfWork.AuditLogs.AddAsync(auditLog);
+        }
+        catch
+        {
+            // silently ignore
+        }
+
         await _unitOfWork.SaveChangesAsync();
 
         await RecalculatePtRatingAsync(booking.PtProfileId);

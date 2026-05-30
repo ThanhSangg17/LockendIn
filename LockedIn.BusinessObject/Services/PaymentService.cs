@@ -223,6 +223,31 @@ public class PaymentService : IPaymentService
                 booking.UpdatedAt = DateTime.UtcNow;
 
                 _unitOfWork.Bookings.Update(booking);
+
+                try
+                {
+                    var ptProfile = await _unitOfWork.PtProfiles.Query()
+                        .FirstOrDefaultAsync(pt => pt.Id == booking.PtProfileId);
+                    if (ptProfile != null)
+                    {
+                        var notification = new Notification
+                        {
+                            Id = Guid.NewGuid(),
+                            UserId = ptProfile.UserId,
+                            Title = "New paid booking",
+                            Content = "A customer has paid for a booking and is waiting for your acceptance.",
+                            Type = (int)NotificationType.Booking,
+                            IsRead = false,
+                            IsDeleted = false,
+                            CreatedAt = DateTime.UtcNow
+                        };
+                        await _unitOfWork.Notifications.AddAsync(notification);
+                    }
+                }
+                catch
+                {
+                    // silently ignore
+                }
             }
             else
             {

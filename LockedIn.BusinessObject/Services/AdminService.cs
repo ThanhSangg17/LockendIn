@@ -27,52 +27,432 @@ public class AdminService : IAdminService
 
     public async Task<ApiResponse<DashboardResponse>> GetDashboardAsync()
     {
-        return await Task.FromResult(ApiResponse<DashboardResponse>.Ok(new DashboardResponse(), "Not implemented yet"));
+        if (!_currentUserService.IsAuthenticated || _currentUserService.Role != (int)UserRole.Admin)
+        {
+            return ApiResponse<DashboardResponse>.Fail("Only Admins can perform this action.");
+        }
+
+        var totalUsers = await _unitOfWork.Users.Query().CountAsync(u => !u.IsDeleted);
+        var totalCustomers = await _unitOfWork.Users.Query().CountAsync(u => u.Role == (int)UserRole.Customer && !u.IsDeleted);
+        var totalPts = await _unitOfWork.Users.Query().CountAsync(u => u.Role == (int)UserRole.PersonalTrainer && !u.IsDeleted);
+        var totalBookings = await _unitOfWork.Bookings.Query().CountAsync();
+        var totalRevenue = await _unitOfWork.Payments.Query().Where(p => p.Status == (int)PaymentStatus.Success).SumAsync(p => (decimal?)p.Amount) ?? 0m;
+        var openDisputes = await _unitOfWork.Disputes.Query().CountAsync(d => d.Status == (int)DisputeStatus.Open || d.Status == (int)DisputeStatus.UnderReview);
+
+        var response = new DashboardResponse
+        {
+            TotalUsers = totalUsers,
+            TotalCustomers = totalCustomers,
+            TotalPts = totalPts,
+            TotalBookings = totalBookings,
+            TotalRevenue = totalRevenue,
+            OpenDisputes = openDisputes
+        };
+
+        return ApiResponse<DashboardResponse>.Ok(response, "Dashboard retrieved successfully.");
     }
 
     public async Task<ApiResponse<IReadOnlyList<AdminUserResponse>>> GetUsersAsync()
     {
-        return await Task.FromResult(ApiResponse<IReadOnlyList<AdminUserResponse>>.Ok(new List<AdminUserResponse>(), "Not implemented yet"));
+        if (!_currentUserService.IsAuthenticated || _currentUserService.Role != (int)UserRole.Admin)
+        {
+            return ApiResponse<IReadOnlyList<AdminUserResponse>>.Fail("Only Admins can perform this action.");
+        }
+
+        var users = await _unitOfWork.Users.Query()
+            .Where(u => !u.IsDeleted)
+            .OrderByDescending(u => u.CreatedAt)
+            .ToListAsync();
+
+        var response = users.Select(u => new AdminUserResponse
+        {
+            Id = u.Id,
+            Email = u.Email,
+            FullName = u.FullName,
+            Phone = u.Phone,
+            Role = u.Role,
+            Status = u.Status,
+            EmailVerified = u.EmailVerified,
+            CreatedAt = u.CreatedAt
+        }).ToList();
+
+        return ApiResponse<IReadOnlyList<AdminUserResponse>>.Ok(response, "Users retrieved successfully.");
     }
 
     public async Task<ApiResponse<AdminUserResponse>> GetUserByIdAsync(Guid userId)
     {
-        return await Task.FromResult(ApiResponse<AdminUserResponse>.Ok(new AdminUserResponse(), "Not implemented yet"));
+        if (!_currentUserService.IsAuthenticated || _currentUserService.Role != (int)UserRole.Admin)
+        {
+            return ApiResponse<AdminUserResponse>.Fail("Only Admins can perform this action.");
+        }
+
+        var user = await _unitOfWork.Users.Query()
+            .FirstOrDefaultAsync(u => u.Id == userId && !u.IsDeleted);
+
+        if (user == null)
+        {
+            return ApiResponse<AdminUserResponse>.Fail("User not found.");
+        }
+
+        var response = new AdminUserResponse
+        {
+            Id = user.Id,
+            Email = user.Email,
+            FullName = user.FullName,
+            Phone = user.Phone,
+            Role = user.Role,
+            Status = user.Status,
+            EmailVerified = user.EmailVerified,
+            CreatedAt = user.CreatedAt
+        };
+
+        return ApiResponse<AdminUserResponse>.Ok(response, "User retrieved successfully.");
     }
 
     public async Task<ApiResponse<AdminUserResponse>> BanUserAsync(Guid userId)
     {
-        return await Task.FromResult(ApiResponse<AdminUserResponse>.Ok(new AdminUserResponse(), "Not implemented yet"));
+        if (!_currentUserService.IsAuthenticated || _currentUserService.Role != (int)UserRole.Admin)
+        {
+            return ApiResponse<AdminUserResponse>.Fail("Only Admins can perform this action.");
+        }
+
+        var currentUserId = _currentUserService.UserId!.Value;
+        if (userId == currentUserId)
+        {
+            return ApiResponse<AdminUserResponse>.Fail("You cannot ban yourself.");
+        }
+
+        var user = await _unitOfWork.Users.Query()
+            .FirstOrDefaultAsync(u => u.Id == userId && !u.IsDeleted);
+
+        if (user == null)
+        {
+            return ApiResponse<AdminUserResponse>.Fail("User not found.");
+        }
+
+        user.Status = (int)UserStatus.Banned;
+        user.UpdatedAt = DateTime.UtcNow;
+
+        _unitOfWork.Users.Update(user);
+
+        // Audit log
+        try
+        {
+            var auditLog = new AuditLog
+            {
+                Id = Guid.NewGuid(),
+                ActorUserId = currentUserId,
+                Action = "BanUser",
+                EntityName = "User",
+                EntityId = userId,
+                MetadataJson = System.Text.Json.JsonSerializer.Serialize(new { Email = user.Email }),
+                CreatedAt = DateTime.UtcNow
+            };
+            await _unitOfWork.AuditLogs.AddAsync(auditLog);
+        }
+        catch {}
+
+        await _unitOfWork.SaveChangesAsync();
+
+        var response = new AdminUserResponse
+        {
+            Id = user.Id,
+            Email = user.Email,
+            FullName = user.FullName,
+            Phone = user.Phone,
+            Role = user.Role,
+            Status = user.Status,
+            EmailVerified = user.EmailVerified,
+            CreatedAt = user.CreatedAt
+        };
+
+        return ApiResponse<AdminUserResponse>.Ok(response, "User banned successfully.");
     }
 
     public async Task<ApiResponse<AdminUserResponse>> UnbanUserAsync(Guid userId)
     {
-        return await Task.FromResult(ApiResponse<AdminUserResponse>.Ok(new AdminUserResponse(), "Not implemented yet"));
+        if (!_currentUserService.IsAuthenticated || _currentUserService.Role != (int)UserRole.Admin)
+        {
+            return ApiResponse<AdminUserResponse>.Fail("Only Admins can perform this action.");
+        }
+
+        var user = await _unitOfWork.Users.Query()
+            .FirstOrDefaultAsync(u => u.Id == userId && !u.IsDeleted);
+
+        if (user == null)
+        {
+            return ApiResponse<AdminUserResponse>.Fail("User not found.");
+        }
+
+        user.Status = (int)UserStatus.Active;
+        user.UpdatedAt = DateTime.UtcNow;
+
+        _unitOfWork.Users.Update(user);
+
+        // Audit log
+        try
+        {
+            var auditLog = new AuditLog
+            {
+                Id = Guid.NewGuid(),
+                ActorUserId = _currentUserService.UserId!.Value,
+                Action = "UnbanUser",
+                EntityName = "User",
+                EntityId = userId,
+                MetadataJson = System.Text.Json.JsonSerializer.Serialize(new { Email = user.Email }),
+                CreatedAt = DateTime.UtcNow
+            };
+            await _unitOfWork.AuditLogs.AddAsync(auditLog);
+        }
+        catch {}
+
+        await _unitOfWork.SaveChangesAsync();
+
+        var response = new AdminUserResponse
+        {
+            Id = user.Id,
+            Email = user.Email,
+            FullName = user.FullName,
+            Phone = user.Phone,
+            Role = user.Role,
+            Status = user.Status,
+            EmailVerified = user.EmailVerified,
+            CreatedAt = user.CreatedAt
+        };
+
+        return ApiResponse<AdminUserResponse>.Ok(response, "User unbanned successfully.");
     }
 
     public async Task<ApiResponse<IReadOnlyList<PtProfileResponse>>> GetPtVerificationsAsync()
     {
-        return await Task.FromResult(ApiResponse<IReadOnlyList<PtProfileResponse>>.Ok(new List<PtProfileResponse>(), "Not implemented yet"));
+        if (!_currentUserService.IsAuthenticated || _currentUserService.Role != (int)UserRole.Admin)
+        {
+            return ApiResponse<IReadOnlyList<PtProfileResponse>>.Fail("Only Admins can perform this action.");
+        }
+
+        var ptProfiles = await _unitOfWork.PtProfiles.Query()
+            .Include(pt => pt.User)
+            .Where(pt => pt.VerificationStatus != (int)PtVerificationStatus.Approved && !pt.IsDeleted)
+            .OrderByDescending(pt => pt.CreatedAt)
+            .ToListAsync();
+
+        var response = ptProfiles.Select(pt => new PtProfileResponse
+        {
+            Id = pt.Id,
+            UserId = pt.UserId,
+            FullName = pt.User?.FullName ?? string.Empty,
+            Bio = pt.Bio,
+            Specialization = pt.Specialization,
+            ExperienceYears = pt.ExperienceYears,
+            VerificationStatus = pt.VerificationStatus,
+            AverageRating = pt.AverageRating,
+            TotalReviews = pt.TotalReviews
+        }).ToList();
+
+        return ApiResponse<IReadOnlyList<PtProfileResponse>>.Ok(response, "PT verifications retrieved successfully.");
     }
 
     public async Task<ApiResponse<PtProfileResponse>> ApprovePtAsync(Guid ptProfileId)
     {
-        return await Task.FromResult(ApiResponse<PtProfileResponse>.Ok(new PtProfileResponse(), "Not implemented yet"));
+        if (!_currentUserService.IsAuthenticated || _currentUserService.Role != (int)UserRole.Admin)
+        {
+            return ApiResponse<PtProfileResponse>.Fail("Only Admins can perform this action.");
+        }
+
+        var ptProfile = await _unitOfWork.PtProfiles.Query()
+            .Include(pt => pt.User)
+            .FirstOrDefaultAsync(pt => pt.Id == ptProfileId && !pt.IsDeleted);
+
+        if (ptProfile == null)
+        {
+            return ApiResponse<PtProfileResponse>.Fail("PT profile not found.");
+        }
+
+        ptProfile.VerificationStatus = (int)PtVerificationStatus.Approved;
+        ptProfile.ApprovedAt = DateTime.UtcNow;
+        ptProfile.UpdatedAt = DateTime.UtcNow;
+
+        _unitOfWork.PtProfiles.Update(ptProfile);
+
+        // Audit log
+        try
+        {
+            var auditLog = new AuditLog
+            {
+                Id = Guid.NewGuid(),
+                ActorUserId = _currentUserService.UserId!.Value,
+                Action = "ApprovePT",
+                EntityName = "PtProfile",
+                EntityId = ptProfileId,
+                MetadataJson = System.Text.Json.JsonSerializer.Serialize(new { Email = ptProfile.User?.Email }),
+                CreatedAt = DateTime.UtcNow
+            };
+            await _unitOfWork.AuditLogs.AddAsync(auditLog);
+        }
+        catch {}
+
+        // Notification
+        try
+        {
+            var notification = new Notification
+            {
+                Id = Guid.NewGuid(),
+                UserId = ptProfile.UserId,
+                Title = "PT verification approved",
+                Content = "Your PT profile has been approved.",
+                Type = (int)NotificationType.System,
+                IsRead = false,
+                IsDeleted = false,
+                CreatedAt = DateTime.UtcNow
+            };
+            await _unitOfWork.Notifications.AddAsync(notification);
+        }
+        catch {}
+
+        await _unitOfWork.SaveChangesAsync();
+
+        var response = new PtProfileResponse
+        {
+            Id = ptProfile.Id,
+            UserId = ptProfile.UserId,
+            FullName = ptProfile.User?.FullName ?? string.Empty,
+            Bio = ptProfile.Bio,
+            Specialization = ptProfile.Specialization,
+            ExperienceYears = ptProfile.ExperienceYears,
+            VerificationStatus = ptProfile.VerificationStatus,
+            AverageRating = ptProfile.AverageRating,
+            TotalReviews = ptProfile.TotalReviews
+        };
+
+        return ApiResponse<PtProfileResponse>.Ok(response, "PT profile approved successfully.");
     }
 
     public async Task<ApiResponse<PtProfileResponse>> RejectPtAsync(Guid ptProfileId)
     {
-        return await Task.FromResult(ApiResponse<PtProfileResponse>.Ok(new PtProfileResponse(), "Not implemented yet"));
+        if (!_currentUserService.IsAuthenticated || _currentUserService.Role != (int)UserRole.Admin)
+        {
+            return ApiResponse<PtProfileResponse>.Fail("Only Admins can perform this action.");
+        }
+
+        var ptProfile = await _unitOfWork.PtProfiles.Query()
+            .Include(pt => pt.User)
+            .FirstOrDefaultAsync(pt => pt.Id == ptProfileId && !pt.IsDeleted);
+
+        if (ptProfile == null)
+        {
+            return ApiResponse<PtProfileResponse>.Fail("PT profile not found.");
+        }
+
+        ptProfile.VerificationStatus = (int)PtVerificationStatus.Rejected;
+        ptProfile.UpdatedAt = DateTime.UtcNow;
+
+        _unitOfWork.PtProfiles.Update(ptProfile);
+
+        // Audit log
+        try
+        {
+            var auditLog = new AuditLog
+            {
+                Id = Guid.NewGuid(),
+                ActorUserId = _currentUserService.UserId!.Value,
+                Action = "RejectPT",
+                EntityName = "PtProfile",
+                EntityId = ptProfileId,
+                MetadataJson = System.Text.Json.JsonSerializer.Serialize(new { Email = ptProfile.User?.Email }),
+                CreatedAt = DateTime.UtcNow
+            };
+            await _unitOfWork.AuditLogs.AddAsync(auditLog);
+        }
+        catch {}
+
+        // Notification
+        try
+        {
+            var notification = new Notification
+            {
+                Id = Guid.NewGuid(),
+                UserId = ptProfile.UserId,
+                Title = "PT verification rejected",
+                Content = "Your PT profile verification has been rejected.",
+                Type = (int)NotificationType.System,
+                IsRead = false,
+                IsDeleted = false,
+                CreatedAt = DateTime.UtcNow
+            };
+            await _unitOfWork.Notifications.AddAsync(notification);
+        }
+        catch {}
+
+        await _unitOfWork.SaveChangesAsync();
+
+        var response = new PtProfileResponse
+        {
+            Id = ptProfile.Id,
+            UserId = ptProfile.UserId,
+            FullName = ptProfile.User?.FullName ?? string.Empty,
+            Bio = ptProfile.Bio,
+            Specialization = ptProfile.Specialization,
+            ExperienceYears = ptProfile.ExperienceYears,
+            VerificationStatus = ptProfile.VerificationStatus,
+            AverageRating = ptProfile.AverageRating,
+            TotalReviews = ptProfile.TotalReviews
+        };
+
+        return ApiResponse<PtProfileResponse>.Ok(response, "PT profile rejected successfully.");
     }
 
     public async Task<ApiResponse<IReadOnlyList<AdminPaymentResponse>>> GetPaymentsAsync()
     {
-        return await Task.FromResult(ApiResponse<IReadOnlyList<AdminPaymentResponse>>.Ok(new List<AdminPaymentResponse>(), "Not implemented yet"));
+        if (!_currentUserService.IsAuthenticated || _currentUserService.Role != (int)UserRole.Admin)
+        {
+            return ApiResponse<IReadOnlyList<AdminPaymentResponse>>.Fail("Only Admins can perform this action.");
+        }
+
+        var payments = await _unitOfWork.Payments.Query()
+            .OrderByDescending(p => p.CreatedAt)
+            .ToListAsync();
+
+        var response = payments.Select(p => new AdminPaymentResponse
+        {
+            Id = p.Id,
+            BookingId = p.BookingId,
+            Provider = p.Provider,
+            OrderCode = p.OrderCode,
+            Amount = p.Amount,
+            Status = p.Status,
+            CreatedAt = p.CreatedAt
+        }).ToList();
+
+        return ApiResponse<IReadOnlyList<AdminPaymentResponse>>.Ok(response, "Payments retrieved successfully.");
     }
 
     public async Task<ApiResponse<AdminPaymentResponse>> GetPaymentByIdAsync(Guid paymentId)
     {
-        return await Task.FromResult(ApiResponse<AdminPaymentResponse>.Ok(new AdminPaymentResponse(), "Not implemented yet"));
+        if (!_currentUserService.IsAuthenticated || _currentUserService.Role != (int)UserRole.Admin)
+        {
+            return ApiResponse<AdminPaymentResponse>.Fail("Only Admins can perform this action.");
+        }
+
+        var p = await _unitOfWork.Payments.Query()
+            .FirstOrDefaultAsync(pay => pay.Id == paymentId);
+
+        if (p == null)
+        {
+            return ApiResponse<AdminPaymentResponse>.Fail("Payment not found.");
+        }
+
+        var response = new AdminPaymentResponse
+        {
+            Id = p.Id,
+            BookingId = p.BookingId,
+            Provider = p.Provider,
+            OrderCode = p.OrderCode,
+            Amount = p.Amount,
+            Status = p.Status,
+            CreatedAt = p.CreatedAt
+        };
+
+        return ApiResponse<AdminPaymentResponse>.Ok(response, "Payment retrieved successfully.");
     }
 
     public async Task<ApiResponse<IReadOnlyList<AdminDisputeResponse>>> GetDisputesAsync()
@@ -201,6 +581,46 @@ public class AdminService : IAdminService
                 _unitOfWork.Settlements.Update(settlement);
             }
 
+            // Notify Customer: Title = "Dispute resolved", Content = "Your dispute has been resolved with a refund."
+            try
+            {
+                var customerProfile = await _unitOfWork.CustomerProfiles.Query()
+                    .FirstOrDefaultAsync(c => c.Id == booking.CustomerId);
+                if (customerProfile != null)
+                {
+                    var notification = new Notification
+                    {
+                        Id = Guid.NewGuid(),
+                        UserId = customerProfile.UserId,
+                        Title = "Dispute resolved",
+                        Content = "Your dispute has been resolved with a refund.",
+                        Type = (int)NotificationType.Dispute,
+                        IsRead = false,
+                        IsDeleted = false,
+                        CreatedAt = DateTime.UtcNow
+                    };
+                    await _unitOfWork.Notifications.AddAsync(notification);
+                }
+            }
+            catch {}
+
+            // Audit log
+            try
+            {
+                var auditLog = new AuditLog
+                {
+                    Id = Guid.NewGuid(),
+                    ActorUserId = _currentUserService.UserId!.Value,
+                    Action = "ResolveDisputeRefund",
+                    EntityName = "Dispute",
+                    EntityId = dispute.Id,
+                    MetadataJson = System.Text.Json.JsonSerializer.Serialize(new { BookingId = booking.Id, ResolutionNote = dispute.ResolutionNote }),
+                    CreatedAt = DateTime.UtcNow
+                };
+                await _unitOfWork.AuditLogs.AddAsync(auditLog);
+            }
+            catch {}
+
             await _unitOfWork.SaveChangesAsync();
             await _unitOfWork.CommitTransactionAsync();
         }
@@ -294,6 +714,46 @@ public class AdminService : IAdminService
                 await _unitOfWork.Settlements.AddAsync(settlement);
             }
 
+            // Notify PT: Title = "Dispute resolved", Content = "The dispute has been resolved and funds will be released."
+            try
+            {
+                var ptProfile = await _unitOfWork.PtProfiles.Query()
+                    .FirstOrDefaultAsync(pt => pt.Id == booking.PtProfileId);
+                if (ptProfile != null)
+                {
+                    var notification = new Notification
+                    {
+                        Id = Guid.NewGuid(),
+                        UserId = ptProfile.UserId,
+                        Title = "Dispute resolved",
+                        Content = "The dispute has been resolved and funds will be released.",
+                        Type = (int)NotificationType.Dispute,
+                        IsRead = false,
+                        IsDeleted = false,
+                        CreatedAt = DateTime.UtcNow
+                    };
+                    await _unitOfWork.Notifications.AddAsync(notification);
+                }
+            }
+            catch {}
+
+            // Audit log
+            try
+            {
+                var auditLog = new AuditLog
+                {
+                    Id = Guid.NewGuid(),
+                    ActorUserId = _currentUserService.UserId!.Value,
+                    Action = "ResolveDisputeRelease",
+                    EntityName = "Dispute",
+                    EntityId = dispute.Id,
+                    MetadataJson = System.Text.Json.JsonSerializer.Serialize(new { BookingId = booking.Id, ResolutionNote = dispute.ResolutionNote }),
+                    CreatedAt = DateTime.UtcNow
+                };
+                await _unitOfWork.AuditLogs.AddAsync(auditLog);
+            }
+            catch {}
+
             await _unitOfWork.SaveChangesAsync();
             await _unitOfWork.CommitTransactionAsync();
         }
@@ -381,6 +841,47 @@ public class AdminService : IAdminService
         settlement.Status = (int)SettlementStatus.Approved;
         settlement.UpdatedAt = DateTime.UtcNow;
         _unitOfWork.Settlements.Update(settlement);
+
+        // Notify PT: Title = "Settlement approved", Content = "Your settlement has been approved."
+        try
+        {
+            var ptProfile = await _unitOfWork.PtProfiles.Query()
+                .FirstOrDefaultAsync(pt => pt.Id == settlement.PtProfileId);
+            if (ptProfile != null)
+            {
+                var notification = new Notification
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = ptProfile.UserId,
+                    Title = "Settlement approved",
+                    Content = "Your settlement has been approved.",
+                    Type = (int)NotificationType.Settlement,
+                    IsRead = false,
+                    IsDeleted = false,
+                    CreatedAt = DateTime.UtcNow
+                };
+                await _unitOfWork.Notifications.AddAsync(notification);
+            }
+        }
+        catch {}
+
+        // Audit log
+        try
+        {
+            var auditLog = new AuditLog
+            {
+                Id = Guid.NewGuid(),
+                ActorUserId = _currentUserService.UserId!.Value,
+                Action = "ApproveSettlement",
+                EntityName = "Settlement",
+                EntityId = settlementId,
+                MetadataJson = System.Text.Json.JsonSerializer.Serialize(new { BookingId = settlement.BookingId, NetAmount = settlement.NetAmount }),
+                CreatedAt = DateTime.UtcNow
+            };
+            await _unitOfWork.AuditLogs.AddAsync(auditLog);
+        }
+        catch {}
+
         await _unitOfWork.SaveChangesAsync();
 
         var response = MapToAdminSettlementResponse(settlement);
@@ -427,6 +928,46 @@ public class AdminService : IAdminService
             booking.UpdatedAt = DateTime.UtcNow;
             _unitOfWork.Bookings.Update(booking);
 
+            // Notify PT: Title = "Settlement paid", Content = "Your settlement has been marked as settled."
+            try
+            {
+                var ptProfile = await _unitOfWork.PtProfiles.Query()
+                    .FirstOrDefaultAsync(pt => pt.Id == settlement.PtProfileId);
+                if (ptProfile != null)
+                {
+                    var notification = new Notification
+                    {
+                        Id = Guid.NewGuid(),
+                        UserId = ptProfile.UserId,
+                        Title = "Settlement paid",
+                        Content = "Your settlement has been marked as settled.",
+                        Type = (int)NotificationType.Settlement,
+                        IsRead = false,
+                        IsDeleted = false,
+                        CreatedAt = DateTime.UtcNow
+                    };
+                    await _unitOfWork.Notifications.AddAsync(notification);
+                }
+            }
+            catch {}
+
+            // Audit log
+            try
+            {
+                var auditLog = new AuditLog
+                {
+                    Id = Guid.NewGuid(),
+                    ActorUserId = _currentUserService.UserId!.Value,
+                    Action = "MarkSettlementSettled",
+                    EntityName = "Settlement",
+                    EntityId = settlementId,
+                    MetadataJson = System.Text.Json.JsonSerializer.Serialize(new { BookingId = settlement.BookingId, NetAmount = settlement.NetAmount }),
+                    CreatedAt = DateTime.UtcNow
+                };
+                await _unitOfWork.AuditLogs.AddAsync(auditLog);
+            }
+            catch {}
+
             await _unitOfWork.SaveChangesAsync();
             await _unitOfWork.CommitTransactionAsync();
         }
@@ -442,7 +983,27 @@ public class AdminService : IAdminService
 
     public async Task<ApiResponse<IReadOnlyList<AuditLogResponse>>> GetAuditLogsAsync()
     {
-        return await Task.FromResult(ApiResponse<IReadOnlyList<AuditLogResponse>>.Ok(new List<AuditLogResponse>(), "Not implemented yet"));
+        if (!_currentUserService.IsAuthenticated || _currentUserService.Role != (int)UserRole.Admin)
+        {
+            return ApiResponse<IReadOnlyList<AuditLogResponse>>.Fail("Only Admins can perform this action.");
+        }
+
+        var logs = await _unitOfWork.AuditLogs.Query()
+            .OrderByDescending(l => l.CreatedAt)
+            .ToListAsync();
+
+        var response = logs.Select(l => new AuditLogResponse
+        {
+            Id = l.Id,
+            ActorUserId = l.ActorUserId,
+            Action = l.Action,
+            EntityName = l.EntityName,
+            EntityId = l.EntityId,
+            MetadataJson = l.MetadataJson,
+            CreatedAt = l.CreatedAt
+        }).ToList();
+
+        return ApiResponse<IReadOnlyList<AuditLogResponse>>.Ok(response, "Audit logs retrieved successfully.");
     }
 
     #region Helper Methods

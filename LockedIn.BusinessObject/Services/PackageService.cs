@@ -58,6 +58,26 @@ public class PackageService : IPackageService
         };
 
         await _unitOfWork.Packages.AddAsync(package);
+
+        try
+        {
+            var auditLog = new AuditLog
+            {
+                Id = Guid.NewGuid(),
+                ActorUserId = _currentUserService.UserId!.Value,
+                Action = "CreatePackage",
+                EntityName = "Package",
+                EntityId = package.Id,
+                MetadataJson = System.Text.Json.JsonSerializer.Serialize(new { Name = package.Name, Price = package.Price }),
+                CreatedAt = DateTime.UtcNow
+            };
+            await _unitOfWork.AuditLogs.AddAsync(auditLog);
+        }
+        catch
+        {
+            // silently ignore
+        }
+
         await _unitOfWork.SaveChangesAsync();
 
         var response = MapToPackageResponse(package);
@@ -135,6 +155,26 @@ public class PackageService : IPackageService
         package.UpdatedAt = DateTime.UtcNow;
 
         _unitOfWork.Packages.Update(package);
+
+        try
+        {
+            var auditLog = new AuditLog
+            {
+                Id = Guid.NewGuid(),
+                ActorUserId = _currentUserService.UserId!.Value,
+                Action = "UpdatePackage",
+                EntityName = "Package",
+                EntityId = package.Id,
+                MetadataJson = System.Text.Json.JsonSerializer.Serialize(new { Name = package.Name, Price = package.Price }),
+                CreatedAt = DateTime.UtcNow
+            };
+            await _unitOfWork.AuditLogs.AddAsync(auditLog);
+        }
+        catch
+        {
+            // silently ignore
+        }
+
         await _unitOfWork.SaveChangesAsync();
 
         var response = MapToPackageResponse(package);
@@ -227,6 +267,26 @@ public class PackageService : IPackageService
         package.DeletedAt = DateTime.UtcNow;
 
         _unitOfWork.Packages.Update(package);
+
+        try
+        {
+            var auditLog = new AuditLog
+            {
+                Id = Guid.NewGuid(),
+                ActorUserId = _currentUserService.UserId!.Value,
+                Action = "DeletePackage",
+                EntityName = "Package",
+                EntityId = package.Id,
+                MetadataJson = System.Text.Json.JsonSerializer.Serialize(new { Name = package.Name, Price = package.Price }),
+                CreatedAt = DateTime.UtcNow
+            };
+            await _unitOfWork.AuditLogs.AddAsync(auditLog);
+        }
+        catch
+        {
+            // silently ignore
+        }
+
         await _unitOfWork.SaveChangesAsync();
 
         return ApiResponse<string>.Ok("Package deleted successfully.", "Package deleted successfully.");

@@ -109,6 +109,50 @@ public class DisputeService : IDisputeService
                 _unitOfWork.Settlements.Update(settlement);
             }
 
+            try
+            {
+                var ptProfile = await _unitOfWork.PtProfiles.Query()
+                    .FirstOrDefaultAsync(pt => pt.Id == booking.PtProfileId);
+                if (ptProfile != null)
+                {
+                    var notification = new Notification
+                    {
+                        Id = Guid.NewGuid(),
+                        UserId = ptProfile.UserId,
+                        Title = "New dispute",
+                        Content = "A customer has opened a dispute.",
+                        Type = (int)NotificationType.Dispute,
+                        IsRead = false,
+                        IsDeleted = false,
+                        CreatedAt = DateTime.UtcNow
+                    };
+                    await _unitOfWork.Notifications.AddAsync(notification);
+                }
+            }
+            catch
+            {
+                // silently ignore
+            }
+
+            try
+            {
+                var auditLog = new AuditLog
+                {
+                    Id = Guid.NewGuid(),
+                    ActorUserId = _currentUserService.UserId!.Value,
+                    Action = "CreateDispute",
+                    EntityName = "Dispute",
+                    EntityId = dispute.Id,
+                    MetadataJson = System.Text.Json.JsonSerializer.Serialize(new { BookingId = booking.Id, Reason = request.Reason }),
+                    CreatedAt = DateTime.UtcNow
+                };
+                await _unitOfWork.AuditLogs.AddAsync(auditLog);
+            }
+            catch
+            {
+                // silently ignore
+            }
+
             await _unitOfWork.SaveChangesAsync();
             await _unitOfWork.CommitTransactionAsync();
         }
