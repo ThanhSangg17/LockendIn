@@ -1243,6 +1243,64 @@
     "ReturnTypes": []
   },
   {
+    "ContainingType": "LockedIn.Api.Controllers.UploadsController",
+    "Method": "DeleteFile",
+    "RelativePath": "api/uploads",
+    "HttpMethod": "DELETE",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "publicId",
+        "Type": "System.String",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LockedIn.Api.Controllers.UploadsController",
+    "Method": "UploadFile",
+    "RelativePath": "api/uploads/file",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "file",
+        "Type": "Microsoft.AspNetCore.Http.IFormFile",
+        "IsRequired": false
+      },
+      {
+        "Name": "folder",
+        "Type": "System.String",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "LockedIn.Api.Controllers.UploadsController",
+    "Method": "UploadImage",
+    "RelativePath": "api/uploads/image",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "file",
+        "Type": "Microsoft.AspNetCore.Http.IFormFile",
+        "IsRequired": false
+      },
+      {
+        "Name": "folder",
+        "Type": "System.String",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
     "ContainingType": "LockedIn.Api.Controllers.UsersController",
     "Method": "GetMyProfileAsync",
     "RelativePath": "api/users/me",

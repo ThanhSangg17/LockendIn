@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <ItemGroup>
     <ProjectReference Include="..\LockedIn.BusinessObject\LockedIn.BusinessObject.csproj" />
@@ -14,6 +14,7 @@
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>83bfa84c-3060-4983-97e2-4e4c58ddf605</UserSecretsId>
   </PropertyGroup>
 
 </Project>
