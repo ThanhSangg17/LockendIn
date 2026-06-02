@@ -70,6 +70,12 @@ namespace LockedIn.Api
             builder.Services.AddScoped<IAdminService, AdminService>();
             builder.Services.AddScoped<ICloudinaryService, CloudinaryService>();
 
+            // 4.5 PayOS Client
+            var payOsClientId = builder.Configuration["PayOS:ClientId"]!;
+            var payOsApiKey = builder.Configuration["PayOS:ApiKey"]!;
+            var payOsChecksumKey = builder.Configuration["PayOS:ChecksumKey"]!;
+            builder.Services.AddSingleton(new PayOS.PayOSClient(payOsClientId, payOsApiKey, payOsChecksumKey));
+
             // Current User Context Services
             builder.Services.AddHttpContextAccessor();
             builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();

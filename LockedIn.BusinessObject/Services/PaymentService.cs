@@ -15,11 +15,19 @@ public class PaymentService : IPaymentService
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUserService _currentUserService;
+    private readonly PayOS.PayOSClient _payOSClient;
+    private readonly Microsoft.Extensions.Configuration.IConfiguration _configuration;
 
-    public PaymentService(IUnitOfWork unitOfWork, ICurrentUserService currentUserService)
+    public PaymentService(
+        IUnitOfWork unitOfWork, 
+        ICurrentUserService currentUserService,
+        PayOS.PayOSClient payOSClient,
+        Microsoft.Extensions.Configuration.IConfiguration configuration)
     {
         _unitOfWork = unitOfWork;
         _currentUserService = currentUserService;
+        _payOSClient = payOSClient;
+        _configuration = configuration;
     }
 
     public async Task<ApiResponse<PaymentResponse>> CreatePaymentLinkAsync(CreatePaymentLinkRequest request)
@@ -80,16 +88,47 @@ public class PaymentService : IPaymentService
             return ApiResponse<PaymentResponse>.Ok(existingResponse, "Pending payment link already exists.");
         }
 
-        var orderCode = "ORDER-" + DateTime.UtcNow.Ticks;
+        var returnUrl = _configuration["PayOS:ReturnUrl"];
+        var cancelUrl = _configuration["PayOS:CancelUrl"];
+
+        if (string.IsNullOrEmpty(returnUrl) || string.IsNullOrEmpty(cancelUrl))
+        {
+            return ApiResponse<PaymentResponse>.Fail("PayOS ReturnUrl or CancelUrl is not configured.");
+        }
+
+        long payOsOrderCode = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() * 100 + Random.Shared.Next(0, 100);
+        long payOsAmount = Convert.ToInt64(booking.TotalAmount);
+
+        var payOsRequest = new PayOS.Models.V2.PaymentRequests.CreatePaymentLinkRequest
+        {
+            OrderCode = payOsOrderCode,
+            Amount = payOsAmount,
+            Description = $"Booking {payOsOrderCode}",
+            CancelUrl = cancelUrl,
+            ReturnUrl = returnUrl
+        };
+
+        PayOS.Models.V2.PaymentRequests.CreatePaymentLinkResponse paymentLink;
+        try
+        {
+            paymentLink = await _payOSClient.PaymentRequests.CreateAsync(payOsRequest);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[PAYOS ERROR] Failed to create payment link: {ex}");
+            return ApiResponse<PaymentResponse>.Fail($"Failed to create payment link with PayOS: {ex.Message}");
+        }
+
+        var orderCodeStr = payOsOrderCode.ToString();
         var payment = new Payment
         {
             Id = Guid.NewGuid(),
             BookingId = booking.Id,
             Provider = "PayOS",
-            OrderCode = orderCode,
+            OrderCode = orderCodeStr,
             Amount = booking.TotalAmount,
             Status = (int)PaymentStatus.Pending,
-            CheckoutUrl = "https://pay.payos.vn/checkout/" + orderCode,
+            CheckoutUrl = paymentLink.CheckoutUrl,
             ExpiredAt = DateTime.UtcNow.AddMinutes(15),
             CreatedAt = DateTime.UtcNow
         };
