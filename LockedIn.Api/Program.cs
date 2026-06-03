@@ -64,6 +64,7 @@ namespace LockedIn.Api
             builder.Services.AddScoped<IFirebaseChatService, FirebaseChatService>();
             builder.Services.AddScoped<IEmailService, EmailService>();
             builder.Services.AddScoped<IMealPlanService, MealPlanService>();
+            builder.Services.AddHttpClient<IGeminiService, GeminiService>();
             builder.Services.AddScoped<IReviewService, ReviewService>();
             builder.Services.AddScoped<IDisputeService, DisputeService>();
             builder.Services.AddScoped<ISettlementService, SettlementService>();
