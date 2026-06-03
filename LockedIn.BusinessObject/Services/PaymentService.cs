@@ -373,6 +373,108 @@ public class PaymentService : IPaymentService
         }
     }
 
+    public async Task<ApiResponse<string>> CancelPaymentAsync(Guid paymentId)
+    {
+        _logger.LogInformation("CancelPaymentAsync: Received request to cancel payment {PaymentId}.", paymentId);
+
+        if (!_currentUserService.IsAuthenticated || !_currentUserService.UserId.HasValue)
+        {
+            return ApiResponse<string>.Fail("User is not authenticated.");
+        }
+
+        var payment = await _unitOfWork.Payments.Query()
+            .Include(p => p.Booking)
+            .FirstOrDefaultAsync(p => p.Id == paymentId);
+
+        if (payment == null)
+        {
+            return ApiResponse<string>.Fail("Payment not found.");
+        }
+
+        var userId = _currentUserService.UserId.Value;
+
+        // Validate auth / ownership
+        if (_currentUserService.Role == (int)UserRole.Customer)
+        {
+            var customerProfile = await _unitOfWork.CustomerProfiles.Query()
+                .FirstOrDefaultAsync(c => c.UserId == userId && !c.IsDeleted);
+            if (customerProfile == null || payment.Booking.CustomerId != customerProfile.Id)
+            {
+                _logger.LogWarning("CancelPaymentAsync: Customer {UserId} does not own the booking for payment {PaymentId}.", userId, paymentId);
+                return ApiResponse<string>.Fail("You do not own this payment/booking.");
+            }
+        }
+        else if (_currentUserService.Role != (int)UserRole.Admin)
+        {
+            _logger.LogWarning("CancelPaymentAsync: User {UserId} with role {Role} tried to cancel payment {PaymentId}.", userId, _currentUserService.Role, paymentId);
+            return ApiResponse<string>.Fail("Only customers and admins can cancel payment links.");
+        }
+
+        // Idempotency check: If already cancelled
+        if (payment.Status == (int)PaymentStatus.Failed && payment.Booking.Status == (int)BookingStatus.Cancelled)
+        {
+            _logger.LogInformation("CancelPaymentAsync: Payment {PaymentId} and Booking {BookingId} are already cancelled (Idempotent).", paymentId, payment.BookingId);
+            return ApiResponse<string>.Ok("Payment already cancelled.", "Payment already cancelled.");
+        }
+
+        // Check if already completed
+        if (payment.Status == (int)PaymentStatus.Success)
+        {
+            _logger.LogWarning("CancelPaymentAsync: Attempt to cancel a completed payment. PaymentId: {PaymentId}", paymentId);
+            return ApiResponse<string>.Fail("Payment already completed and cannot be cancelled directly.");
+        }
+
+        // Require Pending and PendingPayment states
+        if (payment.Status != (int)PaymentStatus.Pending || payment.Booking.Status != (int)BookingStatus.PendingPayment)
+        {
+            _logger.LogWarning("CancelPaymentAsync: Invalid state for cancellation. PaymentId: {PaymentId}, PaymentStatus: {PaymentStatus}, BookingStatus: {BookingStatus}", 
+                paymentId, payment.Status, payment.Booking.Status);
+            return ApiResponse<string>.Fail("Payment or booking is not in a cancellable state.");
+        }
+
+        long orderCode = long.Parse(payment.OrderCode);
+        _logger.LogInformation("CancelPaymentAsync: Attempting to cancel PayOS payment link for OrderCode {OrderCode}.", orderCode);
+        try
+        {
+            var payOsResult = await _payOSClient.PaymentRequests.CancelAsync(orderCode, "Cancelled by user or admin");
+            _logger.LogInformation("CancelPaymentAsync: PayOS cancellation API response for OrderCode {OrderCode}: {Response}", 
+                orderCode, System.Text.Json.JsonSerializer.Serialize(payOsResult));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "CancelPaymentAsync: Failed to cancel PayOS payment link for OrderCode {OrderCode}. Continuing with local database updates.", orderCode);
+        }
+
+        // Local DB Updates
+        await _unitOfWork.BeginTransactionAsync();
+        try
+        {
+            var oldPaymentStatus = payment.Status;
+            var oldBookingStatus = payment.Booking.Status;
+
+            payment.Status = (int)PaymentStatus.Failed;
+            payment.Booking.Status = (int)BookingStatus.Cancelled;
+            payment.Booking.UpdatedAt = DateTime.UtcNow;
+
+            _unitOfWork.Payments.Update(payment);
+            _unitOfWork.Bookings.Update(payment.Booking);
+
+            await _unitOfWork.SaveChangesAsync();
+            await _unitOfWork.CommitTransactionAsync();
+
+            _logger.LogInformation("CancelPaymentAsync: Successfully updated Payment {PaymentId} status from {OldPaymentStatus} to Failed ({NewPaymentStatus}), and Booking {BookingId} status from {OldBookingStatus} to Cancelled ({NewBookingStatus}).",
+                payment.Id, oldPaymentStatus, payment.Status, payment.Booking.Id, oldBookingStatus, payment.Booking.Status);
+
+            return ApiResponse<string>.Ok("Payment cancelled successfully.", "Payment cancelled successfully.");
+        }
+        catch (Exception ex)
+        {
+            await _unitOfWork.RollbackTransactionAsync();
+            _logger.LogError(ex, "CancelPaymentAsync: Exception occurred during database updates for Payment {PaymentId}.", paymentId);
+            return ApiResponse<string>.Fail($"Failed to cancel payment: {ex.Message}");
+        }
+    }
+
     #region Helper Methods
 
     private async Task<(bool Allowed, string? Error)> CheckBookingAccessAsync(Booking booking)

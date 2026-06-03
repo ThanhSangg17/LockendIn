@@ -11,4 +11,5 @@ public interface IPaymentService
     Task<ApiResponse<PaymentResponse>> GetPaymentByBookingAsync(Guid bookingId);
     Task<ApiResponse<PaymentResponse>> GetPaymentByIdAsync(Guid paymentId);
     Task<ApiResponse<string>> HandlePayOsWebhookAsync(PayOS.Models.Webhooks.Webhook request);
+    Task<ApiResponse<string>> CancelPaymentAsync(Guid paymentId);
 }

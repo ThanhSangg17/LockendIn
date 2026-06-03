@@ -44,6 +44,30 @@ public class PaymentsController : ControllerBase
         return Ok(result);
     }
 
+    [HttpPost("{paymentId}/cancel")]
+    public async Task<IActionResult> CancelPaymentAsync(Guid paymentId)
+    {
+        var result = await _service.CancelPaymentAsync(paymentId);
+        if (!result.Success)
+        {
+            if (result.Message == "Payment not found.")
+            {
+                return NotFound(result);
+            }
+            if (result.Message == "You do not own this payment/booking." || 
+                result.Message == "Only customers and admins can cancel payment links.")
+            {
+                return StatusCode(403, result);
+            }
+            if (result.Message == "User is not authenticated.")
+            {
+                return Unauthorized(result);
+            }
+            return BadRequest(result);
+        }
+        return Ok(result);
+    }
+
     [HttpGet("payos/return")]
     [AllowAnonymous]
     public IActionResult PayOsReturn()
