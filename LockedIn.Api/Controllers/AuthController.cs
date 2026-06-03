@@ -74,10 +74,11 @@ public class AuthController : ControllerBase
         return Ok(result);
     }
 
-    [HttpPost("verify-email")]
+    [HttpGet("verify-email")]
     [AllowAnonymous]
-    public async Task<IActionResult> VerifyEmailAsync([FromBody] VerifyEmailRequest request)
+    public async Task<IActionResult> VerifyEmailAsync([FromQuery] Guid userId, [FromQuery] string token)
     {
+        var request = new VerifyEmailRequest { UserId = userId, Token = token };
         var result = await _service.VerifyEmailAsync(request);
         return Ok(result);
     }

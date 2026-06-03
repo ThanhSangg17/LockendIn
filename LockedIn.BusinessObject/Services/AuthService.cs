@@ -23,12 +23,18 @@ public class AuthService : IAuthService
     private readonly IUnitOfWork _unitOfWork;
     private readonly IConfiguration _configuration;
     private readonly ICurrentUserService _currentUserService;
+    private readonly IEmailService _emailService;
 
-    public AuthService(IUnitOfWork unitOfWork, IConfiguration configuration, ICurrentUserService currentUserService)
+    public AuthService(
+        IUnitOfWork unitOfWork, 
+        IConfiguration configuration, 
+        ICurrentUserService currentUserService,
+        IEmailService emailService)
     {
         _unitOfWork = unitOfWork;
         _configuration = configuration;
         _currentUserService = currentUserService;
+        _emailService = emailService;
     }
 
     public async Task<ApiResponse<AuthResponse>> RegisterCustomerAsync(RegisterCustomerRequest request)
@@ -76,23 +82,17 @@ public class AuthService : IAuthService
             };
             await _unitOfWork.CustomerProfiles.AddAsync(customerProfile);
 
-            var accessToken = GenerateAccessToken(user);
-            var rawRefreshToken = GenerateRefreshToken();
-            var refreshTokenHash = HashRefreshToken(rawRefreshToken);
-
-            var refreshTokenExpiresDays = int.Parse(_configuration["Jwt:RefreshTokenExpirationDays"] ?? "7");
-            var refreshToken = new RefreshToken
-            {
-                Id = Guid.NewGuid(),
-                UserId = user.Id,
-                TokenHash = refreshTokenHash,
-                ExpiresAt = DateTime.UtcNow.AddDays(refreshTokenExpiresDays),
-                CreatedAt = DateTime.UtcNow
-            };
-            await _unitOfWork.RefreshTokens.AddAsync(refreshToken);
-
             await _unitOfWork.SaveChangesAsync();
             await _unitOfWork.CommitTransactionAsync();
+
+            try
+            {
+                await _emailService.SendVerificationEmailAsync(user.Id, user.Email, user.FullName);
+            }
+            catch (Exception)
+            {
+                // Ignore email sending exceptions to complete registration successfully
+            }
 
             return ApiResponse<AuthResponse>.Ok(new AuthResponse
             {
@@ -100,9 +100,9 @@ public class AuthService : IAuthService
                 Email = user.Email,
                 FullName = user.FullName,
                 Role = user.Role,
-                AccessToken = accessToken,
-                RefreshToken = rawRefreshToken
-            }, "Registration successful.");
+                AccessToken = "",
+                RefreshToken = ""
+            }, "Registration successful. Please check your email to verify your account.");
         }
         catch (Exception ex)
         {
@@ -162,23 +162,17 @@ public class AuthService : IAuthService
             };
             await _unitOfWork.PtProfiles.AddAsync(ptProfile);
 
-            var accessToken = GenerateAccessToken(user);
-            var rawRefreshToken = GenerateRefreshToken();
-            var refreshTokenHash = HashRefreshToken(rawRefreshToken);
-
-            var refreshTokenExpiresDays = int.Parse(_configuration["Jwt:RefreshTokenExpirationDays"] ?? "7");
-            var refreshToken = new RefreshToken
-            {
-                Id = Guid.NewGuid(),
-                UserId = user.Id,
-                TokenHash = refreshTokenHash,
-                ExpiresAt = DateTime.UtcNow.AddDays(refreshTokenExpiresDays),
-                CreatedAt = DateTime.UtcNow
-            };
-            await _unitOfWork.RefreshTokens.AddAsync(refreshToken);
-
             await _unitOfWork.SaveChangesAsync();
             await _unitOfWork.CommitTransactionAsync();
+
+            try
+            {
+                await _emailService.SendVerificationEmailAsync(user.Id, user.Email, user.FullName);
+            }
+            catch (Exception)
+            {
+                // Ignore email sending exceptions to complete registration successfully
+            }
 
             return ApiResponse<AuthResponse>.Ok(new AuthResponse
             {
@@ -186,9 +180,9 @@ public class AuthService : IAuthService
                 Email = user.Email,
                 FullName = user.FullName,
                 Role = user.Role,
-                AccessToken = accessToken,
-                RefreshToken = rawRefreshToken
-            }, "Registration successful.");
+                AccessToken = "",
+                RefreshToken = ""
+            }, "Registration successful. Please check your email to verify your account.");
         }
         catch (Exception ex)
         {
@@ -222,6 +216,11 @@ public class AuthService : IAuthService
         if (!isPasswordValid)
         {
             return ApiResponse<AuthResponse>.Fail("Invalid email or password");
+        }
+
+        if (!user.EmailVerified)
+        {
+            return ApiResponse<AuthResponse>.Fail("Please verify your email before logging in.");
         }
 
         var accessToken = GenerateAccessToken(user);
@@ -339,7 +338,75 @@ public class AuthService : IAuthService
 
     public async Task<ApiResponse<string>> VerifyEmailAsync(VerifyEmailRequest request)
     {
-        return await Task.FromResult(ApiResponse<string>.Ok(string.Empty, "Not implemented yet"));
+        try
+        {
+            var bytes = Microsoft.AspNetCore.WebUtilities.Base64UrlTextEncoder.Decode(request.Token);
+            var tokenRaw = Encoding.UTF8.GetString(bytes);
+            var parts = tokenRaw.Split("||");
+            if (parts.Length != 2)
+            {
+                return ApiResponse<string>.Fail("Invalid verification token format.");
+            }
+
+            var payload = parts[0];
+            var signature = parts[1];
+
+            var secretKey = _configuration["Jwt:SecretKey"]!;
+            using (var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(secretKey)))
+            {
+                var expectedHashBytes = hmac.ComputeHash(Encoding.UTF8.GetBytes(payload));
+                var expectedSignature = Convert.ToBase64String(expectedHashBytes);
+                if (signature != expectedSignature)
+                {
+                    return ApiResponse<string>.Fail("Verification token signature is invalid.");
+                }
+            }
+
+            var payloadParts = payload.Split('|');
+            if (payloadParts.Length != 3)
+            {
+                return ApiResponse<string>.Fail("Invalid verification token payload.");
+            }
+
+            if (!Guid.TryParse(payloadParts[0], out var tokenUserId) || tokenUserId != request.UserId)
+            {
+                return ApiResponse<string>.Fail("User ID mismatch.");
+            }
+
+            if (!long.TryParse(payloadParts[2], out var expirationTicks))
+            {
+                return ApiResponse<string>.Fail("Invalid verification token expiration.");
+            }
+
+            var expirationUtc = new DateTime(expirationTicks, DateTimeKind.Utc);
+            if (DateTime.UtcNow > expirationUtc)
+            {
+                return ApiResponse<string>.Fail("Verification link has expired.");
+            }
+
+            var user = await _unitOfWork.Users.GetByIdAsync(request.UserId);
+            if (user == null || user.IsDeleted)
+            {
+                return ApiResponse<string>.Fail("User not found.");
+            }
+
+            if (user.EmailVerified)
+            {
+                return ApiResponse<string>.Ok("Email is already verified.", "Email is already verified.");
+            }
+
+            user.EmailVerified = true;
+            user.UpdatedAt = DateTime.UtcNow;
+
+            _unitOfWork.Users.Update(user);
+            await _unitOfWork.SaveChangesAsync();
+
+            return ApiResponse<string>.Ok("Email verified successfully.", "Email verified successfully.");
+        }
+        catch (Exception ex)
+        {
+            return ApiResponse<string>.Fail($"Email verification failed: {ex.Message}");
+        }
     }
 
     public async Task<ApiResponse<CurrentUserResponse>> GetMeAsync()
