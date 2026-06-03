@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using LockedIn.BusinessObject.Common;
 using LockedIn.BusinessObject.Interfaces;
 using LockedIn.DataAccess.UnitOfWork;
@@ -17,17 +18,20 @@ public class PaymentService : IPaymentService
     private readonly ICurrentUserService _currentUserService;
     private readonly PayOS.PayOSClient _payOSClient;
     private readonly Microsoft.Extensions.Configuration.IConfiguration _configuration;
+    private readonly Microsoft.Extensions.Logging.ILogger<PaymentService> _logger;
 
     public PaymentService(
         IUnitOfWork unitOfWork, 
         ICurrentUserService currentUserService,
         PayOS.PayOSClient payOSClient,
-        Microsoft.Extensions.Configuration.IConfiguration configuration)
+        Microsoft.Extensions.Configuration.IConfiguration configuration,
+        Microsoft.Extensions.Logging.ILogger<PaymentService> logger)
     {
         _unitOfWork = unitOfWork;
         _currentUserService = currentUserService;
         _payOSClient = payOSClient;
         _configuration = configuration;
+        _logger = logger;
     }
 
     public async Task<ApiResponse<PaymentResponse>> CreatePaymentLinkAsync(CreatePaymentLinkRequest request)
@@ -201,51 +205,102 @@ public class PaymentService : IPaymentService
         return ApiResponse<PaymentResponse>.Ok(response, "Payment retrieved successfully.");
     }
 
-    public async Task<ApiResponse<string>> HandlePayOsWebhookAsync(PayOsWebhookRequest request)
+    public async Task<ApiResponse<string>> HandlePayOsWebhookAsync(PayOS.Models.Webhooks.Webhook request)
     {
         var receivedAt = DateTime.UtcNow;
         var rawPayload = System.Text.Json.JsonSerializer.Serialize(request);
-        var isValidSignature = !string.IsNullOrWhiteSpace(request.Signature);
+        _logger.LogInformation("PayOS Webhook received. Raw payload: {Payload}", rawPayload);
+
+        // PayOS returnUrl/cancelUrl are only browser redirects and must not be trusted as payment confirmation.
+        // This webhook with signature verification is the trusted source for payment status.
+
+        PayOS.Models.Webhooks.WebhookData verifiedData;
+        try
+        {
+            verifiedData = await _payOSClient.Webhooks.VerifyAsync(request);
+            _logger.LogInformation("PayOS Webhook signature verified successfully. OrderCode: {OrderCode}", verifiedData.OrderCode);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "PayOS Webhook signature verification failed.");
+            
+            var failedWebhookLog = new PaymentWebhookLog
+            {
+                Id = Guid.NewGuid(),
+                Provider = "PayOS",
+                EventType = "Webhook",
+                EventId = "InvalidSignature",
+                RawPayload = rawPayload,
+                IsValidSignature = false,
+                ReceivedAt = receivedAt
+            };
+            try
+            {
+                await _unitOfWork.PaymentWebhookLogs.AddAsync(failedWebhookLog);
+                await _unitOfWork.SaveChangesAsync();
+            }
+            catch (Exception dbEx)
+            {
+                _logger.LogError(dbEx, "Failed to save failed webhook log to database.");
+            }
+
+            return ApiResponse<string>.Fail($"Webhook signature verification failed: {ex.Message}");
+        }
+
+        var orderCodeStr = verifiedData.OrderCode.ToString();
+
+        var payment = await _unitOfWork.Payments.Query()
+            .Include(p => p.Booking)
+            .FirstOrDefaultAsync(p => p.OrderCode == orderCodeStr);
 
         var webhookLog = new PaymentWebhookLog
         {
             Id = Guid.NewGuid(),
             Provider = "PayOS",
             EventType = "Webhook",
-            EventId = request.Data,
+            EventId = orderCodeStr,
             RawPayload = rawPayload,
-            IsValidSignature = isValidSignature,
-            ReceivedAt = receivedAt
+            IsValidSignature = true,
+            ReceivedAt = receivedAt,
+            PaymentId = payment?.Id
         };
-
-        if (!isValidSignature)
-        {
-            await _unitOfWork.PaymentWebhookLogs.AddAsync(webhookLog);
-            await _unitOfWork.SaveChangesAsync();
-            return ApiResponse<string>.Fail("Invalid webhook signature");
-        }
-
-        var orderCode = request.Data;
-        var payment = await _unitOfWork.Payments.Query()
-            .Include(p => p.Booking)
-            .FirstOrDefaultAsync(p => p.OrderCode == orderCode);
 
         if (payment == null)
         {
-            await _unitOfWork.PaymentWebhookLogs.AddAsync(webhookLog);
-            await _unitOfWork.SaveChangesAsync();
-            return ApiResponse<string>.Fail("Payment not found");
-        }
+            _logger.LogWarning("Payment record not found for OrderCode: {OrderCode}", orderCodeStr);
+            
+            try
+            {
+                await _unitOfWork.PaymentWebhookLogs.AddAsync(webhookLog);
+                await _unitOfWork.SaveChangesAsync();
+            }
+            catch (Exception dbEx)
+            {
+                _logger.LogError(dbEx, "Failed to save webhook log for missing payment.");
+            }
 
-        webhookLog.PaymentId = payment.Id;
+            return ApiResponse<string>.Ok("Payment not found but processed safely.", "Payment not found");
+        }
 
         if (payment.Status == (int)PaymentStatus.Success)
         {
+            _logger.LogInformation("Webhook for OrderCode {OrderCode} already processed. Payment is already in SUCCESS status.", orderCodeStr);
+            
             webhookLog.ProcessedAt = DateTime.UtcNow;
-            await _unitOfWork.PaymentWebhookLogs.AddAsync(webhookLog);
-            await _unitOfWork.SaveChangesAsync();
+            try
+            {
+                await _unitOfWork.PaymentWebhookLogs.AddAsync(webhookLog);
+                await _unitOfWork.SaveChangesAsync();
+            }
+            catch (Exception dbEx)
+            {
+                _logger.LogError(dbEx, "Failed to save webhook log for already processed payment.");
+            }
+
             return ApiResponse<string>.Ok("Webhook already processed", "Webhook already processed");
         }
+
+        var oldPaymentStatus = payment.Status;
 
         await _unitOfWork.BeginTransactionAsync();
         try
@@ -254,7 +309,7 @@ public class PaymentService : IPaymentService
             {
                 payment.Status = (int)PaymentStatus.Success;
                 payment.PaidAt = DateTime.UtcNow;
-                payment.ProviderTransactionId = "MOCK-" + payment.OrderCode;
+                payment.ProviderTransactionId = verifiedData.Reference ?? ("MOCK-" + payment.OrderCode);
 
                 var booking = payment.Booking;
                 booking.Status = (int)BookingStatus.PaidPendingAcceptance;
@@ -262,6 +317,8 @@ public class PaymentService : IPaymentService
                 booking.UpdatedAt = DateTime.UtcNow;
 
                 _unitOfWork.Bookings.Update(booking);
+
+                _logger.LogInformation("Payment for OrderCode {OrderCode} updated from status {OldStatus} to Success. Booking updated to PaidPendingAcceptance.", orderCodeStr, oldPaymentStatus);
 
                 try
                 {
@@ -281,16 +338,18 @@ public class PaymentService : IPaymentService
                             CreatedAt = DateTime.UtcNow
                         };
                         await _unitOfWork.Notifications.AddAsync(notification);
+                        _logger.LogInformation("Created notification for PT User {PtUserId} regarding payment success.", ptProfile.UserId);
                     }
                 }
-                catch
+                catch (Exception ex)
                 {
-                    // silently ignore
+                    _logger.LogWarning(ex, "Failed to create payment success notification for PT.");
                 }
             }
             else
             {
                 payment.Status = (int)PaymentStatus.Failed;
+                _logger.LogInformation("Payment for OrderCode {OrderCode} updated to Failed (status: {Status}, description: {Desc}).", orderCodeStr, request.Code, request.Description);
             }
 
             _unitOfWork.Payments.Update(payment);
@@ -301,11 +360,15 @@ public class PaymentService : IPaymentService
             await _unitOfWork.SaveChangesAsync();
             await _unitOfWork.CommitTransactionAsync();
 
+            _logger.LogInformation("Successfully updated Payment status from {OldStatus} to {NewStatus} for OrderCode {OrderCode}.", 
+                oldPaymentStatus, payment.Status, orderCodeStr);
+
             return ApiResponse<string>.Ok("Webhook processed successfully", "Webhook processed successfully");
         }
         catch (Exception ex)
         {
             await _unitOfWork.RollbackTransactionAsync();
+            _logger.LogError(ex, "Error occurred while processing PayOS Webhook for OrderCode {OrderCode}.", orderCodeStr);
             return ApiResponse<string>.Fail($"Error processing webhook: {ex.Message}");
         }
     }
