@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Configuration;
 using LockedIn.BusinessObject.Common;
 using LockedIn.BusinessObject.Interfaces;
 using LockedIn.DataAccess.UnitOfWork;
@@ -19,17 +20,20 @@ public class MealPlanService : IMealPlanService
     private readonly ICurrentUserService _currentUserService;
     private readonly IGeminiService _geminiService;
     private readonly ILogger<MealPlanService> _logger;
+    private readonly IConfiguration _configuration;
 
     public MealPlanService(
         IUnitOfWork unitOfWork,
         ICurrentUserService currentUserService,
         IGeminiService geminiService,
-        ILogger<MealPlanService> logger)
+        ILogger<MealPlanService> logger,
+        IConfiguration configuration)
     {
         _unitOfWork = unitOfWork;
         _currentUserService = currentUserService;
         _geminiService = geminiService;
         _logger = logger;
+        _configuration = configuration;
     }
 
     public async Task<ApiResponse<MealPlanResponse>> GenerateMealPlanAsync(GenerateMealPlanRequest request)
@@ -51,6 +55,38 @@ public class MealPlanService : IMealPlanService
         if (workspace.PtProfileId != pt.Id)
         {
             return ApiResponse<MealPlanResponse>.Fail("You are not the personal trainer assigned to this workspace.");
+        }
+
+        // Verify daily AI usage quota
+        int quotaLimit = 20;
+        var limitConfig = _configuration["AIQuota:DailyMealPlanGenerationLimit"];
+        if (!string.IsNullOrWhiteSpace(limitConfig) && int.TryParse(limitConfig, out var parsedLimit))
+        {
+            quotaLimit = parsedLimit;
+            _logger.LogInformation("Checking daily AI usage quota for PT Profile: {PtProfileId}. Configured quota limit: {QuotaLimit}.", pt.Id, quotaLimit);
+        }
+        else
+        {
+            _logger.LogInformation("Checking daily AI usage quota for PT Profile: {PtProfileId}. AIQuota:DailyMealPlanGenerationLimit configuration missing or invalid. Using fallback default of {QuotaLimit}.", pt.Id, quotaLimit);
+        }
+
+        var todayUtc = DateTime.UtcNow.Date;
+        var tomorrowUtc = todayUtc.AddDays(1);
+
+        _logger.LogInformation("Today UTC range starts at {TodayUtc} and ends at {TomorrowUtc}.", todayUtc, tomorrowUtc);
+
+        var usageCount = await _unitOfWork.AiUsageLogs.Query()
+            .CountAsync(log => log.PtProfileId == pt.Id && 
+                               log.Feature == "AI_MEAL_PLAN" && 
+                               log.CreatedAt >= todayUtc && 
+                               log.CreatedAt < tomorrowUtc);
+
+        _logger.LogInformation("Current successful AI generation count: {UsageCount} (Limit: {QuotaLimit}) for PT Profile: {PtProfileId}.", usageCount, quotaLimit, pt.Id);
+
+        if (usageCount >= quotaLimit)
+        {
+            _logger.LogWarning("Quota exceeded event: PT Profile {PtProfileId} has reached or exceeded the daily limit of {QuotaLimit}. Current usage: {UsageCount}.", pt.Id, quotaLimit, usageCount);
+            return ApiResponse<MealPlanResponse>.Fail("Daily AI generation quota exceeded. Please try again tomorrow.");
         }
 
         // Set other meal plans in same workspace IsActive = false
@@ -135,6 +171,7 @@ public class MealPlanService : IMealPlanService
         await _unitOfWork.AiUsageLogs.AddAsync(aiLog);
         await _unitOfWork.SaveChangesAsync();
 
+        _logger.LogInformation("Successful AI generation count updated for PT Profile: {PtProfileId}. New usage count: {NewCount}", pt.Id, usageCount + 1);
         _logger.LogInformation("Meal plan saved successfully. MealPlanId: {MealPlanId}", mealPlan.Id);
 
         var response = MapToMealPlanResponse(mealPlan);
