@@ -39,6 +39,10 @@ public class AuthService : IAuthService
 
     public async Task<ApiResponse<AuthResponse>> RegisterCustomerAsync(RegisterCustomerRequest request)
     {
+        request.Email = request.Email?.Trim().ToLowerInvariant()!;
+        request.FullName = request.FullName?.Trim()!;
+        request.Phone = request.Phone?.Trim()!;
+
         var validationError = ValidateRegisterInput(request.Email, request.Password, request.FullName);
         if (validationError != null)
         {
@@ -50,7 +54,15 @@ public class AuthService : IAuthService
 
         if (emailExists)
         {
-            return ApiResponse<AuthResponse>.Fail("Email is already in use.");
+            return ApiResponse<AuthResponse>.Fail("Email already exists.");
+        }
+
+        var phoneExists = await _unitOfWork.Users.Query()
+            .AnyAsync(u => u.Phone == request.Phone);
+
+        if (phoneExists)
+        {
+            return ApiResponse<AuthResponse>.Fail("Phone number already exists.");
         }
 
         var hashedPassword = BCrypt.Net.BCrypt.HashPassword(request.Password);
@@ -113,6 +125,10 @@ public class AuthService : IAuthService
 
     public async Task<ApiResponse<AuthResponse>> RegisterPtAsync(RegisterPtRequest request)
     {
+        request.Email = request.Email?.Trim().ToLowerInvariant()!;
+        request.FullName = request.FullName?.Trim()!;
+        request.Phone = request.Phone?.Trim()!;
+
         var validationError = ValidateRegisterInput(request.Email, request.Password, request.FullName);
         if (validationError != null)
         {
@@ -124,7 +140,15 @@ public class AuthService : IAuthService
 
         if (emailExists)
         {
-            return ApiResponse<AuthResponse>.Fail("Email is already in use.");
+            return ApiResponse<AuthResponse>.Fail("Email already exists.");
+        }
+
+        var phoneExists = await _unitOfWork.Users.Query()
+            .AnyAsync(u => u.Phone == request.Phone);
+
+        if (phoneExists)
+        {
+            return ApiResponse<AuthResponse>.Fail("Phone number already exists.");
         }
 
         var hashedPassword = BCrypt.Net.BCrypt.HashPassword(request.Password);
@@ -193,6 +217,8 @@ public class AuthService : IAuthService
 
     public async Task<ApiResponse<AuthResponse>> LoginAsync(LoginRequest request)
     {
+        request.Email = request.Email?.Trim().ToLowerInvariant()!;
+
         var validationError = ValidateLoginInput(request.Email, request.Password);
         if (validationError != null)
         {
@@ -487,23 +513,11 @@ public class AuthService : IAuthService
 
     private string? ValidateRegisterInput(string email, string password, string fullName)
     {
-        if (string.IsNullOrWhiteSpace(email))
-            return "Email is required.";
-        if (string.IsNullOrWhiteSpace(password))
-            return "Password is required.";
-        if (string.IsNullOrWhiteSpace(fullName))
-            return "Full Name is required.";
-        if (password.Length < 6)
-            return "Password must be at least 6 characters long.";
         return null;
     }
 
     private string? ValidateLoginInput(string email, string password)
     {
-        if (string.IsNullOrWhiteSpace(email))
-            return "Email is required.";
-        if (string.IsNullOrWhiteSpace(password))
-            return "Password is required.";
         return null;
     }
 

@@ -103,14 +103,31 @@ public class MealPlanService : IMealPlanService
             return ApiResponse<MealPlanResponse>.Fail("Only personal trainers can create meal plans.");
         }
 
+        request.Title = request.Title?.Trim()!;
+        request.ContentJson = request.ContentJson?.Trim()!;
+
         if (string.IsNullOrWhiteSpace(request.Title))
         {
             return ApiResponse<MealPlanResponse>.Fail("Title is required.");
         }
 
+        if (request.Title.Length > 150)
+        {
+            return ApiResponse<MealPlanResponse>.Fail("Title cannot exceed 150 characters.");
+        }
+
         if (string.IsNullOrWhiteSpace(request.ContentJson))
         {
             return ApiResponse<MealPlanResponse>.Fail("ContentJson is required.");
+        }
+
+        try
+        {
+            using var jsonDoc = System.Text.Json.JsonDocument.Parse(request.ContentJson);
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            return ApiResponse<MealPlanResponse>.Fail("ContentJson must be a valid JSON string.");
         }
 
         var workspace = await _unitOfWork.Workspaces.Query()

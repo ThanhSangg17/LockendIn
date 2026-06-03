@@ -67,9 +67,16 @@ public class ReviewService : IReviewService
             return ApiResponse<ReviewResponse>.Fail("Booking already has a review.");
         }
 
+        request.Comment = request.Comment?.Trim();
+
         if (request.Rating < 1 || request.Rating > 5)
         {
             return ApiResponse<ReviewResponse>.Fail("Rating must be between 1 and 5.");
+        }
+
+        if (request.Comment != null && request.Comment.Length > 500)
+        {
+            return ApiResponse<ReviewResponse>.Fail("Comment cannot exceed 500 characters.");
         }
 
         var review = new Review
@@ -149,9 +156,16 @@ public class ReviewService : IReviewService
             return ApiResponse<ReviewResponse>.Fail("Reviews can only be updated within 7 days after creation.");
         }
 
+        request.Comment = request.Comment?.Trim();
+
         if (request.Rating < 1 || request.Rating > 5)
         {
             return ApiResponse<ReviewResponse>.Fail("Rating must be between 1 and 5.");
+        }
+
+        if (request.Comment != null && request.Comment.Length > 500)
+        {
+            return ApiResponse<ReviewResponse>.Fail("Comment cannot exceed 500 characters.");
         }
 
         // Preserve PT reply if it exists under the delimiter separation hack
@@ -200,10 +214,20 @@ public class ReviewService : IReviewService
             }
         }
 
+        reply = reply?.Trim()!;
+        if (string.IsNullOrWhiteSpace(reply))
+        {
+            return ApiResponse<ReviewResponse>.Fail("Reply content is required.");
+        }
+        if (reply.Length > 500)
+        {
+            return ApiResponse<ReviewResponse>.Fail("Reply cannot exceed 500 characters.");
+        }
+
         // Update PT reply using the delimiter separation hack
         var parts = review.Comment?.Split("|||", 2);
         string customerComment = parts?.Length > 0 ? parts[0] : string.Empty;
-        review.Comment = string.IsNullOrEmpty(reply) ? customerComment : $"{customerComment}|||{reply}";
+        review.Comment = $"{customerComment}|||{reply}";
         review.UpdatedAt = DateTime.UtcNow;
 
         _unitOfWork.Reviews.Update(review);

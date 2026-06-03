@@ -113,9 +113,16 @@ public class FirebaseChatService : IFirebaseChatService
             return ApiResponse<ChatMessageResponse>.Fail("User is not authenticated.");
         }
 
+        request.Content = request.Content?.Trim()!;
+
         if (string.IsNullOrWhiteSpace(request.Content))
         {
             return ApiResponse<ChatMessageResponse>.Fail("Message content is required.");
+        }
+
+        if (request.Content.Length > 1000)
+        {
+            return ApiResponse<ChatMessageResponse>.Fail("Message content cannot exceed 1000 characters.");
         }
 
         var conversation = await _unitOfWork.Conversations.Query()

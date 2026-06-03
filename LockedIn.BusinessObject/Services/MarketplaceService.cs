@@ -34,7 +34,8 @@ public class MarketplaceService : IMarketplaceService
 
         if (!string.IsNullOrWhiteSpace(request.Keyword))
         {
-            var keyword = request.Keyword.Trim().ToLower();
+            request.Keyword = request.Keyword.Trim();
+            var keyword = request.Keyword.ToLower();
             query = query.Where(pt => 
                 pt.User.FullName.ToLower().Contains(keyword) || 
                 (pt.Specialization != null && pt.Specialization.ToLower().Contains(keyword)) ||
@@ -49,8 +50,8 @@ public class MarketplaceService : IMarketplaceService
 
         var totalCount = await query.CountAsync();
 
-        var pageNumber = request.PageNumber > 0 ? request.PageNumber : 1;
-        var pageSize = request.PageSize > 0 ? request.PageSize : 10;
+        var pageNumber = request.PageNumber;
+        var pageSize = request.PageSize;
 
         var pts = await query
             .Skip((pageNumber - 1) * pageSize)

@@ -35,6 +35,9 @@ public class DisputeService : IDisputeService
             return ApiResponse<DisputeResponse>.Fail("Only customers can create disputes.");
         }
 
+        request.Reason = request.Reason?.Trim()!;
+        request.Description = request.Description?.Trim()!;
+
         if (string.IsNullOrWhiteSpace(request.Reason))
         {
             return ApiResponse<DisputeResponse>.Fail("Reason is required.");
@@ -43,6 +46,16 @@ public class DisputeService : IDisputeService
         if (string.IsNullOrWhiteSpace(request.Description))
         {
             return ApiResponse<DisputeResponse>.Fail("Description is required.");
+        }
+
+        if (request.Reason.Length > 255)
+        {
+            return ApiResponse<DisputeResponse>.Fail("Reason cannot exceed 255 characters.");
+        }
+
+        if (request.Description.Length > 2000)
+        {
+            return ApiResponse<DisputeResponse>.Fail("Description cannot exceed 2000 characters.");
         }
 
         var customerProfile = await GetCurrentCustomerProfileAsync();
