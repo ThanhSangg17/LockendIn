@@ -17,4 +17,5 @@ public interface IAuthService
     Task<ApiResponse<string>> ResetPasswordAsync(ResetPasswordRequest request);
     Task<ApiResponse<string>> VerifyEmailAsync(VerifyEmailRequest request);
     Task<ApiResponse<CurrentUserResponse>> GetMeAsync();
+    Task<ApiResponse<AuthResponse>> GoogleLoginAsync(GoogleLoginRequest request);
 }

@@ -1,0 +1,17 @@
+# Docker ignore file
+**/.git
+**/.github
+**/.vs
+**/.vscode
+**/bin
+**/obj
+**/logs
+**/TestResults
+**/*.trx
+**/appsettings.Development.json
+**/secrets.json
+**/*.user
+**/bin/
+**/obj/
+**/out/
+**/dist/

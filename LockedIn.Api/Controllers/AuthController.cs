@@ -43,6 +43,14 @@ public class AuthController : ControllerBase
         return Ok(result);
     }
 
+    [HttpPost("google-login")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GoogleLoginAsync([FromBody] GoogleLoginRequest request)
+    {
+        var result = await _service.GoogleLoginAsync(request);
+        return Ok(result);
+    }
+
     [HttpPost("refresh-token")]
     [AllowAnonymous]
     public async Task<IActionResult> RefreshTokenAsync([FromBody] RefreshTokenRequest request)

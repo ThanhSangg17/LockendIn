@@ -15,6 +15,8 @@ using LockedIn.BusinessObject.Interfaces;
 using LockedIn.DataAccess.UnitOfWork;
 using LockedIn.DataAccess.Models;
 using LockedIn.BusinessObject.DTOs.Auth;
+using Google.Apis.Auth;
+using LockedIn.BusinessObject.Enums;
 
 namespace LockedIn.BusinessObject.Services;
 
@@ -460,6 +462,157 @@ public class AuthService : IAuthService
         };
 
         return ApiResponse<CurrentUserResponse>.Ok(response, "Current user retrieved successfully.");
+    }
+
+    public async Task<ApiResponse<AuthResponse>> GoogleLoginAsync(GoogleLoginRequest request)
+    {
+        if (request == null || string.IsNullOrWhiteSpace(request.IdToken))
+        {
+            return ApiResponse<AuthResponse>.Fail("Google ID token is required.");
+        }
+
+        var clientId = _configuration["Google:ClientId"] ?? _configuration["Authentication:Google:ClientId"];
+        if (string.IsNullOrEmpty(clientId))
+        {
+            return ApiResponse<AuthResponse>.Fail("Google Client ID is not configured.");
+        }
+
+        GoogleJsonWebSignature.Payload payload;
+        try
+        {
+            var settings = new GoogleJsonWebSignature.ValidationSettings
+            {
+                Audience = new[] { clientId }
+            };
+            payload = await GoogleJsonWebSignature.ValidateAsync(request.IdToken, settings);
+        }
+        catch (InvalidJwtException ex)
+        {
+            return ApiResponse<AuthResponse>.Fail($"Invalid Google ID token: {ex.Message}");
+        }
+        catch (Exception ex)
+        {
+            return ApiResponse<AuthResponse>.Fail($"Google token validation failed: {ex.Message}");
+        }
+
+        if (!payload.EmailVerified)
+        {
+            return ApiResponse<AuthResponse>.Fail("Google email is not verified.");
+        }
+
+        var email = payload.Email?.Trim().ToLowerInvariant();
+        if (string.IsNullOrEmpty(email))
+        {
+            return ApiResponse<AuthResponse>.Fail("Email claim is missing in Google token.");
+        }
+
+        var user = await _unitOfWork.Users.Query()
+            .FirstOrDefaultAsync(u => u.Email == email);
+
+        if (user != null)
+        {
+            if (user.IsDeleted)
+            {
+                return ApiResponse<AuthResponse>.Fail("User account has been deleted.");
+            }
+
+            if (user.Status != (int)UserStatus.Active)
+            {
+                return ApiResponse<AuthResponse>.Fail("User account is inactive.");
+            }
+
+            if (user.Role != (int)UserRole.Customer)
+            {
+                return ApiResponse<AuthResponse>.Fail("Google Login currently supports Customer accounts only.");
+            }
+
+            if (!user.EmailVerified)
+            {
+                user.EmailVerified = true;
+                user.UpdatedAt = DateTime.UtcNow;
+                _unitOfWork.Users.Update(user);
+                await _unitOfWork.SaveChangesAsync();
+            }
+        }
+        else
+        {
+            if (request.Role == null)
+            {
+                return ApiResponse<AuthResponse>.Fail("Role is required for first-time Google registration.");
+            }
+
+            if (request.Role != (int)UserRole.Customer)
+            {
+                return ApiResponse<AuthResponse>.Fail("Google Login currently supports Customer accounts only.");
+            }
+
+            var secureRandomPassword = Guid.NewGuid().ToString();
+            var hashedPassword = BCrypt.Net.BCrypt.HashPassword(secureRandomPassword);
+
+            user = new User
+            {
+                Id = Guid.NewGuid(),
+                Email = email,
+                PasswordHash = hashedPassword,
+                FullName = payload.Name ?? email.Split('@')[0],
+                Role = (int)UserRole.Customer,
+                Status = (int)UserStatus.Active,
+                EmailVerified = true,
+                IsDeleted = false,
+                CreatedAt = DateTime.UtcNow,
+                AvatarUrl = payload.Picture
+            };
+
+            await _unitOfWork.BeginTransactionAsync();
+            try
+            {
+                await _unitOfWork.Users.AddAsync(user);
+
+                var customerProfile = new CustomerProfile
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = user.Id,
+                    IsDeleted = false,
+                    CreatedAt = DateTime.UtcNow
+                };
+                await _unitOfWork.CustomerProfiles.AddAsync(customerProfile);
+
+                await _unitOfWork.SaveChangesAsync();
+                await _unitOfWork.CommitTransactionAsync();
+            }
+            catch (Exception ex)
+            {
+                await _unitOfWork.RollbackTransactionAsync();
+                return ApiResponse<AuthResponse>.Fail($"Google registration failed: {ex.Message}");
+            }
+        }
+
+        var accessToken = GenerateAccessToken(user);
+        var rawRefreshToken = GenerateRefreshToken();
+        var refreshTokenHash = HashRefreshToken(rawRefreshToken);
+
+        var refreshTokenExpiresDays = int.Parse(_configuration["Jwt:RefreshTokenExpirationDays"] ?? "7");
+        var refreshToken = new RefreshToken
+        {
+            Id = Guid.NewGuid(),
+            UserId = user.Id,
+            TokenHash = refreshTokenHash,
+            ExpiresAt = DateTime.UtcNow.AddDays(refreshTokenExpiresDays),
+            CreatedAt = DateTime.UtcNow
+        };
+        await _unitOfWork.RefreshTokens.AddAsync(refreshToken);
+
+        await _unitOfWork.SaveChangesAsync();
+
+        return ApiResponse<AuthResponse>.Ok(new AuthResponse
+        {
+            UserId = user.Id,
+            Email = user.Email,
+            FullName = user.FullName,
+            Role = user.Role,
+            AccessToken = accessToken,
+            RefreshToken = rawRefreshToken
+        }, "Login successful.");
     }
 
     #region Helper Methods
