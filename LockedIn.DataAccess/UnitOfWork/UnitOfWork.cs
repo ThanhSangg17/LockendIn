@@ -30,6 +30,7 @@ public class UnitOfWork : IUnitOfWork
     public ISettlementRepository Settlements { get; }
     public INotificationRepository Notifications { get; }
     public IAuditLogRepository AuditLogs { get; }
+    public IWorkspaceSessionRepository WorkspaceSessions { get; }
 
     public UnitOfWork(LockedInDbContext context)
     {
@@ -53,6 +54,7 @@ public class UnitOfWork : IUnitOfWork
         Settlements = new SettlementRepository(_context);
         Notifications = new NotificationRepository(_context);
         AuditLogs = new AuditLogRepository(_context);
+        WorkspaceSessions = new WorkspaceSessionRepository(_context);
     }
 
     public async Task<int> SaveChangesAsync()

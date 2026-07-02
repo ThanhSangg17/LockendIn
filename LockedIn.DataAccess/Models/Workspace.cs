@@ -27,5 +27,7 @@ public partial class Workspace
 
     public virtual ICollection<MealPlan> MealPlans { get; set; } = new List<MealPlan>();
 
+    public virtual ICollection<WorkspaceSession> WorkspaceSessions { get; set; } = new List<WorkspaceSession>();
+
     public virtual PtProfile PtProfile { get; set; } = null!;
 }

@@ -335,6 +335,32 @@ public class BookingService : IBookingService
             return ApiResponse<BookingResponse>.Fail($"Failed to accept booking: {ex.Message}");
         }
 
+        // Audit log after commit (best-effort)
+        try
+        {
+            var auditLog = new AuditLog
+            {
+                Id = Guid.NewGuid(),
+                ActorUserId = ptProfile.UserId,
+                Action = "AcceptBooking",
+                EntityName = "Booking",
+                EntityId = booking.Id,
+                MetadataJson = System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    bookingId = booking.Id,
+                    ptProfileId = booking.PtProfileId,
+                    customerId = booking.CustomerId
+                }),
+                CreatedAt = DateTime.UtcNow
+            };
+            await _unitOfWork.AuditLogs.AddAsync(auditLog);
+            await _unitOfWork.SaveChangesAsync();
+        }
+        catch
+        {
+            // silently ignore
+        }
+
         var response = MapToBookingResponse(booking);
         return ApiResponse<BookingResponse>.Ok(response, "Booking accepted successfully.");
     }
@@ -410,6 +436,7 @@ public class BookingService : IBookingService
         }
 
         var booking = await _unitOfWork.Bookings.Query()
+            .Include(b => b.Workspace)
             .FirstOrDefaultAsync(b => b.Id == bookingId);
 
         if (booking == null)
@@ -427,71 +454,33 @@ public class BookingService : IBookingService
             return ApiResponse<BookingResponse>.Fail("Booking can only be completed if it is active.");
         }
 
+        if (booking.Workspace == null)
+        {
+            return ApiResponse<BookingResponse>.Fail("Workspace not found for this booking.");
+        }
+
+        // Kiểm tra số lượng session thực tế đã hoàn thành
+        var completedSessionsCount = await _unitOfWork.WorkspaceSessions.Query()
+            .CountAsync(s => s.WorkspaceId == booking.Workspace.Id);
+
+        if (completedSessionsCount < booking.SessionCount)
+        {
+            return ApiResponse<BookingResponse>.Fail($"Cannot complete booking: only {completedSessionsCount}/{booking.SessionCount} sessions are completed.");
+        }
+
         await _unitOfWork.BeginTransactionAsync();
+        BookingCompletionResult completionResult;
         try
         {
-            booking.Status = (int)BookingStatus.CompletedPendingSettlement;
-            booking.CompletedAt = DateTime.UtcNow;
-            booking.SettlementDueAt = DateTime.UtcNow.AddHours(48);
-            booking.UpdatedAt = DateTime.UtcNow;
-
-            _unitOfWork.Bookings.Update(booking);
-
-            var existingSettlement = await _unitOfWork.Settlements.Query()
-                .FirstOrDefaultAsync(s => s.BookingId == booking.Id);
-
-            if (existingSettlement == null)
+            // Close Workspace if active
+            if (booking.Workspace.Status != (int)WorkspaceStatus.Closed)
             {
-                var platformFee = booking.TotalAmount * 0.10m;
-                var netAmount = booking.TotalAmount - platformFee;
-
-                var settlement = new Settlement
-                {
-                    Id = Guid.NewGuid(),
-                    BookingId = booking.Id,
-                    PtProfileId = booking.PtProfileId,
-                    GrossAmount = booking.TotalAmount,
-                    PlatformFee = platformFee,
-                    NetAmount = netAmount,
-                    Status = (int)SettlementStatus.Pending,
-                    CreatedAt = DateTime.UtcNow
-                };
-
-                var openDispute = await _unitOfWork.Disputes.Query()
-                    .AnyAsync(d => d.BookingId == booking.Id && (d.Status == (int)DisputeStatus.Open || d.Status == (int)DisputeStatus.UnderReview));
-
-                if (openDispute)
-                {
-                    settlement.Status = (int)SettlementStatus.BlockedByDispute;
-                }
-
-                await _unitOfWork.Settlements.AddAsync(settlement);
+                booking.Workspace.Status = (int)WorkspaceStatus.Closed;
+                booking.Workspace.UpdatedAt = DateTime.UtcNow;
+                _unitOfWork.Workspaces.Update(booking.Workspace);
             }
 
-            try
-            {
-                var customerProfile = await _unitOfWork.CustomerProfiles.Query()
-                    .FirstOrDefaultAsync(c => c.Id == booking.CustomerId);
-                if (customerProfile != null)
-                {
-                    var notification = new Notification
-                    {
-                        Id = Guid.NewGuid(),
-                        UserId = customerProfile.UserId,
-                        Title = "Booking completed",
-                        Content = "Your booking has been completed. You can now leave a review.",
-                        Type = (int)NotificationType.Booking,
-                        IsRead = false,
-                        IsDeleted = false,
-                        CreatedAt = DateTime.UtcNow
-                    };
-                    await _unitOfWork.Notifications.AddAsync(notification);
-                }
-            }
-            catch
-            {
-                // silently ignore
-            }
+            completionResult = await CompleteBookingCoreAsync(booking);
 
             await _unitOfWork.SaveChangesAsync();
             await _unitOfWork.CommitTransactionAsync();
@@ -502,8 +491,136 @@ public class BookingService : IBookingService
             return ApiResponse<BookingResponse>.Fail($"Failed to complete booking: {ex.Message}");
         }
 
+        // Audit log after commit (best-effort)
+        try
+        {
+            var bookingAudit = new AuditLog
+            {
+                Id = Guid.NewGuid(),
+                ActorUserId = ptProfile.UserId,
+                Action = "CompleteBooking",
+                EntityName = "Booking",
+                EntityId = completionResult.BookingId,
+                MetadataJson = System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    bookingId = completionResult.BookingId,
+                    workspaceId = booking.Workspace.Id,
+                    totalSessions = booking.SessionCount
+                }),
+                CreatedAt = DateTime.UtcNow
+            };
+            await _unitOfWork.AuditLogs.AddAsync(bookingAudit);
+
+            var settlementAudit = new AuditLog
+            {
+                Id = Guid.NewGuid(),
+                ActorUserId = ptProfile.UserId,
+                Action = "CreateSettlement",
+                EntityName = "Settlement",
+                EntityId = completionResult.SettlementId,
+                MetadataJson = System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    bookingId = completionResult.BookingId,
+                    settlementId = completionResult.SettlementId,
+                    grossAmount = completionResult.TotalAmount
+                }),
+                CreatedAt = DateTime.UtcNow
+            };
+            await _unitOfWork.AuditLogs.AddAsync(settlementAudit);
+
+            await _unitOfWork.SaveChangesAsync();
+        }
+        catch
+        {
+            // silently ignore
+        }
+
         var response = MapToBookingResponse(booking);
         return ApiResponse<BookingResponse>.Ok(response, "Booking completed successfully.");
+    }
+
+    public async Task<BookingCompletionResult> CompleteBookingCoreAsync(Booking booking)
+    {
+        // 1. Update Booking status
+        booking.Status = (int)BookingStatus.CompletedPendingSettlement;
+        booking.CompletedAt = DateTime.UtcNow;
+        booking.SettlementDueAt = DateTime.UtcNow.AddHours(48);
+        booking.UpdatedAt = DateTime.UtcNow;
+        _unitOfWork.Bookings.Update(booking);
+
+        // 2. Create Settlement if not exists
+        var existingSettlement = await _unitOfWork.Settlements.Query()
+            .FirstOrDefaultAsync(s => s.BookingId == booking.Id);
+
+        Guid settlementId = Guid.NewGuid();
+        if (existingSettlement == null)
+        {
+            var platformFee = booking.TotalAmount * 0.10m;
+            var netAmount = booking.TotalAmount - platformFee;
+
+            var settlement = new Settlement
+            {
+                Id = settlementId,
+                BookingId = booking.Id,
+                PtProfileId = booking.PtProfileId,
+                GrossAmount = booking.TotalAmount,
+                PlatformFee = platformFee,
+                NetAmount = netAmount,
+                Status = (int)SettlementStatus.Pending,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            var openDispute = await _unitOfWork.Disputes.Query()
+                .AnyAsync(d => d.BookingId == booking.Id && (d.Status == (int)DisputeStatus.Open || d.Status == (int)DisputeStatus.UnderReview));
+
+            if (openDispute)
+            {
+                settlement.Status = (int)SettlementStatus.BlockedByDispute;
+            }
+
+            await _unitOfWork.Settlements.AddAsync(settlement);
+        }
+        else
+        {
+            settlementId = existingSettlement.Id;
+        }
+
+        // 3. Create Notification for Customer if not exists
+        Guid customerUserId = Guid.Empty;
+        var customerProfile = await _unitOfWork.CustomerProfiles.Query()
+            .FirstOrDefaultAsync(c => c.Id == booking.CustomerId);
+        if (customerProfile != null)
+        {
+            customerUserId = customerProfile.UserId;
+            var notification = new Notification
+            {
+                Id = Guid.NewGuid(),
+                UserId = customerProfile.UserId,
+                Title = "Booking completed",
+                Content = "Your booking has been completed. You can now leave a review.",
+                Type = (int)NotificationType.Booking,
+                IsRead = false,
+                IsDeleted = false,
+                CreatedAt = DateTime.UtcNow
+            };
+            await _unitOfWork.Notifications.AddAsync(notification);
+        }
+
+        Guid ptUserId = Guid.Empty;
+        var ptProfile = await _unitOfWork.PtProfiles.Query()
+            .FirstOrDefaultAsync(p => p.Id == booking.PtProfileId);
+        if (ptProfile != null)
+        {
+            ptUserId = ptProfile.UserId;
+        }
+
+        return new BookingCompletionResult(
+            booking.Id,
+            customerUserId,
+            ptUserId,
+            booking.TotalAmount,
+            settlementId
+        );
     }
 
     #region Helper Methods

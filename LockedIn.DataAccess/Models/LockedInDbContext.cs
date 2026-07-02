@@ -52,6 +52,9 @@ public partial class LockedInDbContext : DbContext
     public virtual DbSet<User> Users { get; set; }
 
     public virtual DbSet<Workspace> Workspaces { get; set; }
+
+    public virtual DbSet<WorkspaceSession> WorkspaceSessions { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<AiUsageLog>(entity =>
@@ -869,6 +872,31 @@ public partial class LockedInDbContext : DbContext
                 .HasForeignKey(d => d.PtProfileId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("fk_workspaces_pt_profile_id");
+        });
+
+        modelBuilder.Entity<WorkspaceSession>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK__workspace_sessions__3213E83FD1C72652");
+
+            entity.ToTable("workspace_sessions");
+
+            entity.HasIndex(e => new { e.WorkspaceId, e.SessionNumber }, "uq_workspace_sessions_workspace_id_session_number").IsUnique();
+
+            entity.Property(e => e.Id)
+                .HasDefaultValueSql("(newid())")
+                .HasColumnName("id");
+            entity.Property(e => e.WorkspaceId).HasColumnName("workspace_id");
+            entity.Property(e => e.SessionNumber).HasColumnName("session_number");
+            entity.Property(e => e.Description).HasColumnName("description");
+            entity.Property(e => e.CompletedAt).HasColumnName("completed_at");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("(sysutcdatetime())")
+                .HasColumnName("created_at");
+
+            entity.HasOne(d => d.Workspace).WithMany(p => p.WorkspaceSessions)
+                .HasForeignKey(d => d.WorkspaceId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("fk_workspace_sessions_workspace_id");
         });
 
         OnModelCreatingPartial(modelBuilder);

@@ -39,4 +39,18 @@ public class WorkspacesController : ControllerBase
         var result = await _service.UpdateCourseNoteAsync(workspaceId, request);
         return Ok(result);
     }
+
+    [HttpPost("{workspaceId}/sessions")]
+    public async Task<IActionResult> CreateSessionAsync(Guid workspaceId, [FromBody] CreateWorkspaceSessionRequest request)
+    {
+        var result = await _service.CreateSessionAsync(workspaceId, request);
+        return Ok(result);
+    }
+
+    [HttpGet("{workspaceId}/sessions")]
+    public async Task<IActionResult> GetWorkspaceProgressAsync(Guid workspaceId)
+    {
+        var result = await _service.GetWorkspaceProgressAsync(workspaceId);
+        return Ok(result);
+    }
 }

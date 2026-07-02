@@ -14,11 +14,13 @@ public class WorkspaceService : IWorkspaceService
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUserService _currentUserService;
+    private readonly IBookingService _bookingService;
 
-    public WorkspaceService(IUnitOfWork unitOfWork, ICurrentUserService currentUserService)
+    public WorkspaceService(IUnitOfWork unitOfWork, ICurrentUserService currentUserService, IBookingService bookingService)
     {
         _unitOfWork = unitOfWork;
         _currentUserService = currentUserService;
+        _bookingService = bookingService;
     }
 
     public async Task<ApiResponse<WorkspaceResponse>> GetWorkspaceByBookingAsync(Guid bookingId)
@@ -194,6 +196,238 @@ public class WorkspaceService : IWorkspaceService
             CourseNote = workspace.CourseNote,
             CreatedAt = workspace.CreatedAt
         };
+    }
+
+    public async Task<ApiResponse<WorkspaceSessionResponse>> CreateSessionAsync(Guid workspaceId, CreateWorkspaceSessionRequest request)
+    {
+        if (!_currentUserService.IsAuthenticated || !_currentUserService.UserId.HasValue)
+        {
+            return ApiResponse<WorkspaceSessionResponse>.Fail("User is not authenticated.");
+        }
+
+        if (_currentUserService.Role != (int)UserRole.PersonalTrainer)
+        {
+            return ApiResponse<WorkspaceSessionResponse>.Fail("Only personal trainers can create sessions.");
+        }
+
+        var userId = _currentUserService.UserId.Value;
+        var ptProfile = await _unitOfWork.PtProfiles.Query()
+            .FirstOrDefaultAsync(pt => pt.UserId == userId && !pt.IsDeleted);
+
+        if (ptProfile == null)
+        {
+            return ApiResponse<WorkspaceSessionResponse>.Fail("Personal trainer profile not found.");
+        }
+
+        var workspace = await _unitOfWork.Workspaces.Query()
+            .Include(w => w.Booking)
+            .FirstOrDefaultAsync(w => w.Id == workspaceId);
+
+        if (workspace == null)
+        {
+            return ApiResponse<WorkspaceSessionResponse>.Fail("Workspace not found.");
+        }
+
+        if (workspace.PtProfileId != ptProfile.Id)
+        {
+            return ApiResponse<WorkspaceSessionResponse>.Fail("You do not own this workspace.");
+        }
+
+        if (workspace.Status != (int)WorkspaceStatus.Active)
+        {
+            return ApiResponse<WorkspaceSessionResponse>.Fail("Workspace is not active.");
+        }
+
+        var booking = workspace.Booking;
+        if (booking == null)
+        {
+            return ApiResponse<WorkspaceSessionResponse>.Fail("Associated booking not found.");
+        }
+
+        if (booking.Status != (int)BookingStatus.Active)
+        {
+            return ApiResponse<WorkspaceSessionResponse>.Fail("Associated booking is not active.");
+        }
+
+        await _unitOfWork.BeginTransactionAsync();
+        WorkspaceSession session;
+        BookingCompletionResult? completionResult = null;
+        int nextSessionNumber = 0;
+
+        try
+        {
+            var currentSessionsCount = await _unitOfWork.WorkspaceSessions.Query()
+                .CountAsync(s => s.WorkspaceId == workspaceId);
+
+            if (currentSessionsCount >= booking.SessionCount)
+            {
+                await _unitOfWork.RollbackTransactionAsync();
+                return ApiResponse<WorkspaceSessionResponse>.Fail("Cannot create more sessions than booking session count.");
+            }
+
+            nextSessionNumber = currentSessionsCount + 1;
+
+            session = new WorkspaceSession
+            {
+                Id = Guid.NewGuid(),
+                WorkspaceId = workspaceId,
+                SessionNumber = nextSessionNumber,
+                Description = request.Description,
+                CompletedAt = DateTime.UtcNow,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            await _unitOfWork.WorkspaceSessions.AddAsync(session);
+
+            if (nextSessionNumber == booking.SessionCount)
+            {
+                workspace.Status = (int)WorkspaceStatus.Closed;
+                workspace.UpdatedAt = DateTime.UtcNow;
+                _unitOfWork.Workspaces.Update(workspace);
+
+                completionResult = await _bookingService.CompleteBookingCoreAsync(booking);
+            }
+
+            await _unitOfWork.SaveChangesAsync();
+            await _unitOfWork.CommitTransactionAsync();
+        }
+        catch (DbUpdateException dbEx) when (dbEx.InnerException?.Message.Contains("unique", StringComparison.OrdinalIgnoreCase) == true || dbEx.InnerException?.Message.Contains("duplicate", StringComparison.OrdinalIgnoreCase) == true)
+        {
+            await _unitOfWork.RollbackTransactionAsync();
+            return ApiResponse<WorkspaceSessionResponse>.Fail("Conflict: A session with this number has already been recorded.");
+        }
+        catch (Exception ex)
+        {
+            await _unitOfWork.RollbackTransactionAsync();
+            return ApiResponse<WorkspaceSessionResponse>.Fail($"Failed to create workspace session: {ex.Message}");
+        }
+
+        // Audit log after commit (best-effort)
+        try
+        {
+            var sessionAudit = new AuditLog
+            {
+                Id = Guid.NewGuid(),
+                ActorUserId = ptProfile.UserId,
+                Action = "CreateWorkspaceSession",
+                EntityName = "WorkspaceSession",
+                EntityId = session.Id,
+                MetadataJson = System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    bookingId = booking.Id,
+                    workspaceId = workspace.Id,
+                    sessionNumber = nextSessionNumber,
+                    totalSessions = booking.SessionCount
+                }),
+                CreatedAt = DateTime.UtcNow
+            };
+            await _unitOfWork.AuditLogs.AddAsync(sessionAudit);
+
+            if (completionResult != null)
+            {
+                var bookingAudit = new AuditLog
+                {
+                    Id = Guid.NewGuid(),
+                    ActorUserId = ptProfile.UserId,
+                    Action = "CompleteBooking",
+                    EntityName = "Booking",
+                    EntityId = completionResult.BookingId,
+                    MetadataJson = System.Text.Json.JsonSerializer.Serialize(new
+                    {
+                        bookingId = completionResult.BookingId,
+                        workspaceId = workspace.Id,
+                        totalSessions = booking.SessionCount
+                    }),
+                    CreatedAt = DateTime.UtcNow
+                };
+                await _unitOfWork.AuditLogs.AddAsync(bookingAudit);
+
+                var settlementAudit = new AuditLog
+                {
+                    Id = Guid.NewGuid(),
+                    ActorUserId = ptProfile.UserId,
+                    Action = "CreateSettlement",
+                    EntityName = "Settlement",
+                    EntityId = completionResult.SettlementId,
+                    MetadataJson = System.Text.Json.JsonSerializer.Serialize(new
+                    {
+                        bookingId = completionResult.BookingId,
+                        settlementId = completionResult.SettlementId,
+                        grossAmount = completionResult.TotalAmount
+                    }),
+                    CreatedAt = DateTime.UtcNow
+                };
+                await _unitOfWork.AuditLogs.AddAsync(settlementAudit);
+            }
+
+            await _unitOfWork.SaveChangesAsync();
+        }
+        catch
+        {
+            // silently ignore
+        }
+
+        var response = new WorkspaceSessionResponse
+        {
+            Id = session.Id,
+            WorkspaceId = session.WorkspaceId,
+            SessionNumber = session.SessionNumber,
+            Description = session.Description,
+            CompletedAt = session.CompletedAt
+        };
+
+        return ApiResponse<WorkspaceSessionResponse>.Ok(response, "Workspace session created successfully.");
+    }
+
+    public async Task<ApiResponse<WorkspaceProgressResponse>> GetWorkspaceProgressAsync(Guid workspaceId)
+    {
+        if (!_currentUserService.IsAuthenticated || !_currentUserService.UserId.HasValue)
+        {
+            return ApiResponse<WorkspaceProgressResponse>.Fail("User is not authenticated.");
+        }
+
+        var workspace = await _unitOfWork.Workspaces.Query()
+            .Include(w => w.Booking)
+            .FirstOrDefaultAsync(w => w.Id == workspaceId);
+
+        if (workspace == null)
+        {
+            return ApiResponse<WorkspaceProgressResponse>.Fail("Workspace not found.");
+        }
+
+        var (allowed, error) = await CheckWorkspaceAccessAsync(workspace);
+        if (!allowed)
+        {
+            return ApiResponse<WorkspaceProgressResponse>.Fail(error ?? "Access denied.");
+        }
+
+        var dbSessions = await _unitOfWork.WorkspaceSessions.Query()
+            .Where(s => s.WorkspaceId == workspaceId)
+            .OrderBy(s => s.SessionNumber)
+            .ToListAsync();
+
+        var sessionResponses = dbSessions.Select(s => new WorkspaceSessionResponse
+        {
+            Id = s.Id,
+            WorkspaceId = s.WorkspaceId,
+            SessionNumber = s.SessionNumber,
+            Description = s.Description,
+            CompletedAt = s.CompletedAt
+        }).ToList();
+
+        var totalSessions = workspace.Booking.SessionCount;
+        var completedSessionsCount = sessionResponses.Count;
+        var remainingSessions = Math.Max(0, totalSessions - completedSessionsCount);
+
+        var response = new WorkspaceProgressResponse
+        {
+            TotalSessions = totalSessions,
+            CompletedSessionsCount = completedSessionsCount,
+            RemainingSessions = remainingSessions,
+            Sessions = sessionResponses
+        };
+
+        return ApiResponse<WorkspaceProgressResponse>.Ok(response, "Workspace progress retrieved successfully.");
     }
 
     #endregion

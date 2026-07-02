@@ -25,6 +25,7 @@ public interface IUnitOfWork : IDisposable
     ISettlementRepository Settlements { get; }
     INotificationRepository Notifications { get; }
     IAuditLogRepository AuditLogs { get; }
+    IWorkspaceSessionRepository WorkspaceSessions { get; }
 
     Task<int> SaveChangesAsync();
     Task BeginTransactionAsync();
