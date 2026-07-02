@@ -3,7 +3,7 @@ namespace LockedIn.BusinessObject.Enums;
 public enum BookingStatus
 {
     PendingPayment = 1,
-    PaidPendingAcceptance = 2,
+    PendingTrainerAcceptance = 2,
     Active = 3,
     CompletedPendingSettlement = 4,
     Settled = 5,

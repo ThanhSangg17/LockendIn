@@ -65,7 +65,7 @@ public class BookingService : IBookingService
             CustomerId = customerProfile.Id,
             PtProfileId = package.PtProfileId,
             PackageId = package.Id,
-            Status = (int)BookingStatus.PendingPayment,
+            Status = (int)BookingStatus.PendingTrainerAcceptance,
             TotalAmount = package.Price,
             SessionCount = package.SessionCount,
             CreatedAt = DateTime.UtcNow
@@ -203,7 +203,7 @@ public class BookingService : IBookingService
             return ApiResponse<BookingResponse>.Fail("You do not own this booking.");
         }
 
-        if (booking.Status != (int)BookingStatus.PendingPayment && booking.Status != (int)BookingStatus.PaidPendingAcceptance)
+        if (booking.Status != (int)BookingStatus.PendingPayment && booking.Status != (int)BookingStatus.PendingTrainerAcceptance)
         {
             return ApiResponse<BookingResponse>.Fail("Booking can only be cancelled if it is pending payment or pending acceptance.");
         }
@@ -252,54 +252,18 @@ public class BookingService : IBookingService
             return ApiResponse<BookingResponse>.Fail("You are not the assigned personal trainer for this booking.");
         }
 
-        if (booking.Status != (int)BookingStatus.PaidPendingAcceptance)
+        if (booking.Status != (int)BookingStatus.PendingTrainerAcceptance)
         {
-            return ApiResponse<BookingResponse>.Fail("Booking can only be accepted if it is paid and pending acceptance.");
+            return ApiResponse<BookingResponse>.Fail("Booking can only be accepted if it is pending trainer acceptance.");
         }
 
         await _unitOfWork.BeginTransactionAsync();
         try
         {
-            booking.Status = (int)BookingStatus.Active;
-            booking.StartedAt = DateTime.UtcNow;
+            booking.Status = (int)BookingStatus.PendingPayment;
             booking.UpdatedAt = DateTime.UtcNow;
 
             _unitOfWork.Bookings.Update(booking);
-
-            var existingWorkspace = await _unitOfWork.Workspaces.Query()
-                .FirstOrDefaultAsync(w => w.BookingId == booking.Id);
-
-            if (existingWorkspace == null)
-            {
-                var workspace = new Workspace
-                {
-                    Id = Guid.NewGuid(),
-                    BookingId = booking.Id,
-                    CustomerId = booking.CustomerId,
-                    PtProfileId = booking.PtProfileId,
-                    Status = 1,
-                    CourseNote = null,
-                    CreatedAt = DateTime.UtcNow
-                };
-                await _unitOfWork.Workspaces.AddAsync(workspace);
-            }
-
-            var existingConversation = await _unitOfWork.Conversations.Query()
-                .FirstOrDefaultAsync(c => c.BookingId == booking.Id);
-
-            if (existingConversation == null)
-            {
-                var conversation = new Conversation
-                {
-                    Id = Guid.NewGuid(),
-                    BookingId = booking.Id,
-                    CustomerId = booking.CustomerId,
-                    PtProfileId = booking.PtProfileId,
-                    FirebaseConversationId = "firebase-" + booking.Id.ToString(),
-                    CreatedAt = DateTime.UtcNow
-                };
-                await _unitOfWork.Conversations.AddAsync(conversation);
-            }
 
             try
             {
@@ -312,7 +276,7 @@ public class BookingService : IBookingService
                         Id = Guid.NewGuid(),
                         UserId = customerProfile.UserId,
                         Title = "Booking accepted",
-                        Content = "Your personal trainer accepted the booking.",
+                        Content = "Your personal trainer accepted the booking. Please complete the payment to activate your package.",
                         Type = (int)NotificationType.Booking,
                         IsRead = false,
                         IsDeleted = false,
@@ -399,9 +363,9 @@ public class BookingService : IBookingService
             return ApiResponse<BookingResponse>.Fail("You are not the assigned personal trainer for this booking.");
         }
 
-        if (booking.Status != (int)BookingStatus.PaidPendingAcceptance)
+        if (booking.Status != (int)BookingStatus.PendingTrainerAcceptance)
         {
-            return ApiResponse<BookingResponse>.Fail("Booking can only be rejected if it is paid and pending acceptance.");
+            return ApiResponse<BookingResponse>.Fail("Booking can only be rejected if it is pending trainer acceptance.");
         }
 
         booking.Status = (int)BookingStatus.Cancelled;

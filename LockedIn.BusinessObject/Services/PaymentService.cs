@@ -312,38 +312,117 @@ public class PaymentService : IPaymentService
                 payment.ProviderTransactionId = verifiedData.Reference ?? ("MOCK-" + payment.OrderCode);
 
                 var booking = payment.Booking;
-                booking.Status = (int)BookingStatus.PaidPendingAcceptance;
-                booking.PaidAt = DateTime.UtcNow;
-                booking.UpdatedAt = DateTime.UtcNow;
-
-                _unitOfWork.Bookings.Update(booking);
-
-                _logger.LogInformation("Payment for OrderCode {OrderCode} updated from status {OldStatus} to Success. Booking updated to PaidPendingAcceptance.", orderCodeStr, oldPaymentStatus);
-
-                try
+                
+                if (booking.Status != (int)BookingStatus.Active)
                 {
-                    var ptProfile = await _unitOfWork.PtProfiles.Query()
-                        .FirstOrDefaultAsync(pt => pt.Id == booking.PtProfileId);
-                    if (ptProfile != null)
+                    booking.Status = (int)BookingStatus.Active;
+                    booking.PaidAt = DateTime.UtcNow;
+                    booking.UpdatedAt = DateTime.UtcNow;
+
+                    _unitOfWork.Bookings.Update(booking);
+
+                    _logger.LogInformation("Payment for OrderCode {OrderCode} updated from status {OldStatus} to Success. Booking updated to Active.", orderCodeStr, oldPaymentStatus);
+
+                    var existingWorkspace = await _unitOfWork.Workspaces.Query()
+                        .FirstOrDefaultAsync(w => w.BookingId == booking.Id);
+
+                    if (existingWorkspace == null)
                     {
-                        var notification = new Notification
+                        var workspace = new Workspace
                         {
                             Id = Guid.NewGuid(),
-                            UserId = ptProfile.UserId,
-                            Title = "New paid booking",
-                            Content = "A customer has paid for a booking and is waiting for your acceptance.",
-                            Type = (int)NotificationType.Booking,
-                            IsRead = false,
-                            IsDeleted = false,
+                            BookingId = booking.Id,
+                            CustomerId = booking.CustomerId,
+                            PtProfileId = booking.PtProfileId,
+                            Status = 1,
+                            CourseNote = null,
                             CreatedAt = DateTime.UtcNow
                         };
-                        await _unitOfWork.Notifications.AddAsync(notification);
-                        _logger.LogInformation("Created notification for PT User {PtUserId} regarding payment success.", ptProfile.UserId);
+                        await _unitOfWork.Workspaces.AddAsync(workspace);
+                    }
+
+                    var existingConversation = await _unitOfWork.Conversations.Query()
+                        .FirstOrDefaultAsync(c => c.BookingId == booking.Id);
+
+                    if (existingConversation == null)
+                    {
+                        var conversation = new Conversation
+                        {
+                            Id = Guid.NewGuid(),
+                            BookingId = booking.Id,
+                            CustomerId = booking.CustomerId,
+                            PtProfileId = booking.PtProfileId,
+                            FirebaseConversationId = "firebase-" + booking.Id.ToString(),
+                            CreatedAt = DateTime.UtcNow
+                        };
+                        await _unitOfWork.Conversations.AddAsync(conversation);
+                    }
+
+                    try
+                    {
+                        var ptProfile = await _unitOfWork.PtProfiles.Query()
+                            .FirstOrDefaultAsync(pt => pt.Id == booking.PtProfileId);
+                        var customerProfile = await _unitOfWork.CustomerProfiles.Query()
+                            .FirstOrDefaultAsync(c => c.Id == booking.CustomerId);
+
+                        if (ptProfile != null)
+                        {
+                            var notification = new Notification
+                            {
+                                Id = Guid.NewGuid(),
+                                UserId = ptProfile.UserId,
+                                Title = "Booking paid",
+                                Content = "A customer has successfully paid. The workspace and conversation are now active.",
+                                Type = (int)NotificationType.Booking,
+                                IsRead = false,
+                                IsDeleted = false,
+                                CreatedAt = DateTime.UtcNow
+                            };
+                            await _unitOfWork.Notifications.AddAsync(notification);
+                            _logger.LogInformation("Created notification for PT User {PtUserId} regarding payment success.", ptProfile.UserId);
+                        }
+
+                        if (customerProfile != null)
+                        {
+                            var notification = new Notification
+                            {
+                                Id = Guid.NewGuid(),
+                                UserId = customerProfile.UserId,
+                                Title = "Booking activated",
+                                Content = "Your payment was successful and the booking is now active. Start training!",
+                                Type = (int)NotificationType.Booking,
+                                IsRead = false,
+                                IsDeleted = false,
+                                CreatedAt = DateTime.UtcNow
+                            };
+                            await _unitOfWork.Notifications.AddAsync(notification);
+                            
+                            var auditLog = new AuditLog
+                            {
+                                Id = Guid.NewGuid(),
+                                ActorUserId = customerProfile.UserId,
+                                Action = "ActivateBooking",
+                                EntityName = "Booking",
+                                EntityId = booking.Id,
+                                MetadataJson = System.Text.Json.JsonSerializer.Serialize(new
+                                {
+                                    bookingId = booking.Id,
+                                    paymentId = payment.Id,
+                                    orderCode = orderCodeStr
+                                }),
+                                CreatedAt = DateTime.UtcNow
+                            };
+                            await _unitOfWork.AuditLogs.AddAsync(auditLog);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to create payment success notifications or audit log.");
                     }
                 }
-                catch (Exception ex)
+                else
                 {
-                    _logger.LogWarning(ex, "Failed to create payment success notification for PT.");
+                    _logger.LogInformation("Payment for OrderCode {OrderCode} updated to Success. Booking was already Active.", orderCodeStr);
                 }
             }
             else
