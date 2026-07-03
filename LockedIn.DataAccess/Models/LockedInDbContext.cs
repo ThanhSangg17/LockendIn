@@ -197,6 +197,11 @@ public partial class LockedInDbContext : DbContext
             entity.Property(e => e.FirebaseConversationId)
                 .HasMaxLength(255)
                 .HasColumnName("firebase_conversation_id");
+            entity.Property(e => e.LastMessagePreview)
+                .HasMaxLength(255)
+                .HasColumnName("last_message_preview");
+            entity.Property(e => e.LastActivityAt)
+                .HasColumnName("last_activity_at");
             entity.Property(e => e.PtProfileId).HasColumnName("pt_profile_id");
 
             entity.HasOne(d => d.Booking).WithOne(p => p.Conversation)

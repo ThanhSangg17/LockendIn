@@ -106,7 +106,9 @@ public class ConversationService : IConversationService
             CustomerId = booking.CustomerId,
             PtProfileId = booking.PtProfileId,
             FirebaseConversationId = "firebase-" + booking.Id.ToString(),
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.UtcNow,
+            LastActivityAt = DateTime.UtcNow,
+            LastMessagePreview = null
         };
 
         await _unitOfWork.Conversations.AddAsync(conversation);
@@ -114,6 +116,84 @@ public class ConversationService : IConversationService
 
         var response = MapToConversationResponse(conversation);
         return ApiResponse<ConversationResponse>.Ok(response, "Conversation created successfully.");
+    }
+
+    public async Task<ApiResponse<PagedResult<ConversationListResponse>>> GetMyConversationsAsync(PaginationRequest request)
+    {
+        if (!_currentUserService.IsAuthenticated || !_currentUserService.UserId.HasValue)
+        {
+            return ApiResponse<PagedResult<ConversationListResponse>>.Fail("User is not authenticated.");
+        }
+
+        var userId = _currentUserService.UserId.Value;
+        IQueryable<Conversation> query = _unitOfWork.Conversations.Query()
+            .Include(c => c.Booking)
+            .ThenInclude(b => b.Package)
+            .Include(c => c.Customer)
+            .ThenInclude(cu => cu.User)
+            .Include(c => c.PtProfile)
+            .ThenInclude(pt => pt.User);
+
+        if (_currentUserService.Role == (int)UserRole.Customer)
+        {
+            var customerProfile = await _unitOfWork.CustomerProfiles.Query()
+                .FirstOrDefaultAsync(c => c.UserId == userId && !c.IsDeleted);
+            if (customerProfile == null)
+            {
+                return ApiResponse<PagedResult<ConversationListResponse>>.Fail("Customer profile not found.");
+            }
+            query = query.Where(c => c.CustomerId == customerProfile.Id);
+        }
+        else if (_currentUserService.Role == (int)UserRole.PersonalTrainer)
+        {
+            var ptProfile = await _unitOfWork.PtProfiles.Query()
+                .FirstOrDefaultAsync(pt => pt.UserId == userId && !pt.IsDeleted);
+            if (ptProfile == null)
+            {
+                return ApiResponse<PagedResult<ConversationListResponse>>.Fail("Personal trainer profile not found.");
+            }
+            query = query.Where(c => c.PtProfileId == ptProfile.Id);
+        }
+        else
+        {
+            return ApiResponse<PagedResult<ConversationListResponse>>.Fail("Only Customer and PT can view conversations.");
+        }
+
+        var totalItems = await query.CountAsync();
+        var totalPages = (int)Math.Ceiling(totalItems / (double)request.PageSize);
+
+        var conversations = await query
+            .OrderByDescending(c => c.LastActivityAt ?? c.CreatedAt)
+            .ThenByDescending(c => c.CreatedAt)
+            .ThenByDescending(c => c.Id)
+            .Skip((request.PageNumber - 1) * request.PageSize)
+            .Take(request.PageSize)
+            .ToListAsync();
+
+        var isCustomer = _currentUserService.Role == (int)UserRole.Customer;
+
+        var items = conversations.Select(c => new ConversationListResponse
+        {
+            ConversationId = c.Id,
+            BookingId = c.BookingId,
+            PackageName = c.Booking?.Package?.Name ?? string.Empty,
+            OtherUserId = isCustomer ? c.PtProfile.UserId : c.Customer.UserId,
+            OtherUserName = isCustomer ? c.PtProfile?.User?.FullName ?? string.Empty : c.Customer?.User?.FullName ?? string.Empty,
+            LastMessagePreview = c.LastMessagePreview,
+            LastActivityAt = c.LastActivityAt,
+            CreatedAt = c.CreatedAt
+        }).ToList();
+
+        var pagedResult = new PagedResult<ConversationListResponse>
+        {
+            Items = items,
+            PageNumber = request.PageNumber,
+            PageSize = request.PageSize,
+            TotalItems = totalItems,
+            TotalPages = totalPages
+        };
+
+        return ApiResponse<PagedResult<ConversationListResponse>>.Ok(pagedResult, "Conversations retrieved successfully.");
     }
 
     #region Access Control Helpers & Mapping

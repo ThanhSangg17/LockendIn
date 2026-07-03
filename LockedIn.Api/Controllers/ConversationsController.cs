@@ -21,6 +21,13 @@ public class ConversationsController : ControllerBase
         _firebaseChatService = firebaseChatService;
     }
 
+    [HttpGet]
+    public async Task<IActionResult> GetMyConversationsAsync([FromQuery] LockedIn.BusinessObject.Common.PaginationRequest request)
+    {
+        var result = await _service.GetMyConversationsAsync(request);
+        return Ok(result);
+    }
+
     [HttpGet("workspace/{workspaceId}")]
     public async Task<IActionResult> GetConversationByWorkspaceAsync(Guid workspaceId)
     {
@@ -43,9 +50,9 @@ public class ConversationsController : ControllerBase
     }
 
     [HttpGet("{conversationId}/messages")]
-    public async Task<IActionResult> GetMessagesAsync(Guid conversationId)
+    public async Task<IActionResult> GetMessagesAsync(Guid conversationId, [FromQuery] string? cursor, [FromQuery] int limit = 20)
     {
-        var result = await _firebaseChatService.GetMessagesAsync(conversationId);
+        var result = await _firebaseChatService.GetMessagesAsync(conversationId, cursor, limit);
         return Ok(result);
     }
 

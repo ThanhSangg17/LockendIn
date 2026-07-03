@@ -9,4 +9,5 @@ public interface IConversationService
 {
     Task<ApiResponse<ConversationResponse>> GetConversationByWorkspaceAsync(Guid workspaceId);
     Task<ApiResponse<ConversationResponse>> CreateConversationByBookingAsync(Guid bookingId);
+    Task<ApiResponse<PagedResult<ConversationListResponse>>> GetMyConversationsAsync(PaginationRequest request);
 }

@@ -9,6 +9,6 @@ namespace LockedIn.BusinessObject.Interfaces;
 public interface IFirebaseChatService
 {
     Task<ApiResponse<ChatMessageResponse>> SendMessageAsync(SendMessageRequest request);
-    Task<ApiResponse<IReadOnlyList<ChatMessageResponse>>> GetMessagesAsync(Guid conversationId);
+    Task<ApiResponse<MessagePaginationResponse>> GetMessagesAsync(Guid conversationId, string? cursor, int limit);
     Task<ApiResponse<string>> MarkMessagesAsReadAsync(Guid conversationId);
 }

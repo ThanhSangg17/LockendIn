@@ -183,6 +183,27 @@ public class FirebaseChatService : IFirebaseChatService
         try
         {
             await docRef.SetAsync(data);
+
+            try
+            {
+                var dbConversation = await _unitOfWork.Conversations.GetByIdAsync(conversation.Id);
+                if (dbConversation != null)
+                {
+                    var newActivityTime = createdAtTimestamp.ToDateTime();
+                    if (dbConversation.LastActivityAt == null || dbConversation.LastActivityAt < newActivityTime)
+                    {
+                        var preview = request.Content.Length > 250 ? request.Content.Substring(0, 247) + "..." : request.Content;
+                        dbConversation.LastMessagePreview = preview;
+                        dbConversation.LastActivityAt = newActivityTime;
+                        _unitOfWork.Conversations.Update(dbConversation);
+                        await _unitOfWork.SaveChangesAsync();
+                    }
+                }
+            }
+            catch (Exception sqlEx)
+            {
+                Console.WriteLine($"[SQL METADATA UPDATE ERROR] {sqlEx}");
+            }
         }
         catch (Grpc.Core.RpcException ex)
         {
@@ -222,11 +243,11 @@ public class FirebaseChatService : IFirebaseChatService
         return ApiResponse<ChatMessageResponse>.Ok(response, "Message sent successfully.");
     }
 
-    public async Task<ApiResponse<IReadOnlyList<ChatMessageResponse>>> GetMessagesAsync(Guid conversationId)
+    public async Task<ApiResponse<MessagePaginationResponse>> GetMessagesAsync(Guid conversationId, string? cursor, int limit = 20)
     {
         if (!_currentUserService.IsAuthenticated || !_currentUserService.UserId.HasValue)
         {
-            return ApiResponse<IReadOnlyList<ChatMessageResponse>>.Fail("User is not authenticated.");
+            return ApiResponse<MessagePaginationResponse>.Fail("User is not authenticated.");
         }
 
         var conversation = await _unitOfWork.Conversations.Query()
@@ -234,24 +255,45 @@ public class FirebaseChatService : IFirebaseChatService
 
         if (conversation == null)
         {
-            return ApiResponse<IReadOnlyList<ChatMessageResponse>>.Fail("Conversation not found.");
+            return ApiResponse<MessagePaginationResponse>.Fail("Conversation not found.");
         }
 
         var userId = _currentUserService.UserId.Value;
         var (allowed, error) = await CheckParticipantAccessAsync(conversation, userId);
         if (!allowed)
         {
-            return ApiResponse<IReadOnlyList<ChatMessageResponse>>.Fail(error ?? "Access denied.");
+            return ApiResponse<MessagePaginationResponse>.Fail(error ?? "Access denied.");
         }
+
+        if (limit <= 0 || limit > 50) limit = 20;
 
         var colRef = _firestoreDb.Collection("conversations")
             .Document(conversation.FirebaseConversationId)
             .Collection("messages");
 
-        var snapshot = await colRef.OrderBy("createdAt").GetSnapshotAsync();
+        Query query = colRef.OrderByDescending("createdAt").OrderByDescending(FieldPath.DocumentId);
+
+        if (!string.IsNullOrWhiteSpace(cursor))
+        {
+            var cursorDoc = await colRef.Document(cursor).GetSnapshotAsync();
+            if (cursorDoc != null && cursorDoc.Exists)
+            {
+                query = query.StartAfter(cursorDoc);
+            }
+        }
+
+        var snapshot = await query.Limit(limit + 1).GetSnapshotAsync();
 
         var messages = new List<ChatMessageResponse>();
-        foreach (var doc in snapshot.Documents)
+        var docs = snapshot.Documents.ToList();
+
+        bool hasMore = docs.Count > limit;
+        if (hasMore)
+        {
+            docs.RemoveAt(docs.Count - 1);
+        }
+
+        foreach (var doc in docs)
         {
             var docData = doc.ToDictionary();
 
@@ -277,7 +319,18 @@ public class FirebaseChatService : IFirebaseChatService
             });
         }
 
-        return ApiResponse<IReadOnlyList<ChatMessageResponse>>.Ok(messages, "Messages retrieved successfully.");
+        messages.Reverse();
+
+        var nextCursor = docs.Count > 0 ? docs.Last().Id : null;
+
+        var result = new MessagePaginationResponse
+        {
+            Messages = messages,
+            NextCursor = nextCursor,
+            HasMore = hasMore
+        };
+
+        return ApiResponse<MessagePaginationResponse>.Ok(result, "Messages retrieved successfully.");
     }
 
     public async Task<ApiResponse<string>> MarkMessagesAsReadAsync(Guid conversationId)

@@ -17,6 +17,10 @@ public partial class Conversation
 
     public DateTime CreatedAt { get; set; }
 
+    public string? LastMessagePreview { get; set; }
+
+    public DateTime? LastActivityAt { get; set; }
+
     public virtual Booking Booking { get; set; } = null!;
 
     public virtual CustomerProfile Customer { get; set; } = null!;
