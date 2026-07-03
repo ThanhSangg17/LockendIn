@@ -18,7 +18,7 @@ public record BookingCompletionResult(
 public interface IBookingService
 {
     Task<ApiResponse<BookingResponse>> CreateBookingAsync(CreateBookingRequest request);
-    Task<ApiResponse<IReadOnlyList<BookingResponse>>> GetMyBookingsAsync();
+    Task<ApiResponse<PagedResult<BookingHistoryResponse>>> GetMyBookingsAsync(PaginationRequest request, int? bookingStatus, int? paymentStatus, DateTime? startDate, DateTime? endDate);
     Task<ApiResponse<BookingDetailResponse>> GetBookingByIdAsync(Guid bookingId);
     Task<ApiResponse<BookingResponse>> CancelBookingAsync(Guid bookingId);
     Task<ApiResponse<BookingResponse>> AcceptBookingAsync(Guid bookingId);

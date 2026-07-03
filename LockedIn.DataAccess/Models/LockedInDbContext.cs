@@ -533,8 +533,8 @@ public partial class LockedInDbContext : DbContext
                 .HasDefaultValue(1)
                 .HasColumnName("status");
 
-            entity.HasOne(d => d.Booking).WithOne(p => p.Payment)
-                .HasForeignKey<Payment>(d => d.BookingId)
+            entity.HasOne(d => d.Booking).WithMany(p => p.Payments)
+                .HasForeignKey(d => d.BookingId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("fk_payments_booking_id");
         });

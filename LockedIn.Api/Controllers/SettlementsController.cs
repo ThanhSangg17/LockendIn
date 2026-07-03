@@ -19,9 +19,13 @@ public class SettlementsController : ControllerBase
     }
 
     [HttpGet("my")]
-    public async Task<IActionResult> GetMySettlementsAsync()
+    public async Task<IActionResult> GetMySettlementsAsync(
+        [FromQuery] LockedIn.BusinessObject.Common.PaginationRequest request,
+        [FromQuery] int? settlementStatus,
+        [FromQuery] DateTime? startDate,
+        [FromQuery] DateTime? endDate)
     {
-        var result = await _service.GetMySettlementsAsync();
+        var result = await _service.GetMySettlementsAsync(request, settlementStatus, startDate, endDate);
         return Ok(result);
     }
 

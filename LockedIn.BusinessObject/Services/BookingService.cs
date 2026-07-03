@@ -78,15 +78,24 @@ public class BookingService : IBookingService
         return ApiResponse<BookingResponse>.Ok(response, "Booking created successfully.");
     }
 
-    public async Task<ApiResponse<IReadOnlyList<BookingResponse>>> GetMyBookingsAsync()
+    public async Task<ApiResponse<PagedResult<BookingHistoryResponse>>> GetMyBookingsAsync(
+        PaginationRequest request, 
+        int? bookingStatus, 
+        int? paymentStatus, 
+        DateTime? startDate, 
+        DateTime? endDate)
     {
         if (!_currentUserService.IsAuthenticated || !_currentUserService.UserId.HasValue)
         {
-            return ApiResponse<IReadOnlyList<BookingResponse>>.Fail("User is not authenticated.");
+            return ApiResponse<PagedResult<BookingHistoryResponse>>.Fail("User is not authenticated.");
         }
 
         var userId = _currentUserService.UserId.Value;
-        IQueryable<Booking> query = _unitOfWork.Bookings.Query();
+        IQueryable<Booking> query = _unitOfWork.Bookings.Query()
+            .Include(b => b.Package)
+            .Include(b => b.PtProfile)
+            .ThenInclude(p => p.User)
+            .Include(b => b.Payments);
 
         if (_currentUserService.Role == (int)UserRole.Customer)
         {
@@ -94,7 +103,7 @@ public class BookingService : IBookingService
                 .FirstOrDefaultAsync(c => c.UserId == userId && !c.IsDeleted);
             if (customerProfile == null)
             {
-                return ApiResponse<IReadOnlyList<BookingResponse>>.Fail("Customer profile not found.");
+                return ApiResponse<PagedResult<BookingHistoryResponse>>.Fail("Customer profile not found.");
             }
             query = query.Where(b => b.CustomerId == customerProfile.Id);
         }
@@ -104,7 +113,7 @@ public class BookingService : IBookingService
                 .FirstOrDefaultAsync(pt => pt.UserId == userId && !pt.IsDeleted);
             if (ptProfile == null)
             {
-                return ApiResponse<IReadOnlyList<BookingResponse>>.Fail("Personal trainer profile not found.");
+                return ApiResponse<PagedResult<BookingHistoryResponse>>.Fail("Personal trainer profile not found.");
             }
             query = query.Where(b => b.PtProfileId == ptProfile.Id);
         }
@@ -114,15 +123,81 @@ public class BookingService : IBookingService
         }
         else
         {
-            return ApiResponse<IReadOnlyList<BookingResponse>>.Fail("Access denied or invalid user role.");
+            return ApiResponse<PagedResult<BookingHistoryResponse>>.Fail("Access denied or invalid user role.");
         }
+
+        if (bookingStatus.HasValue)
+        {
+            query = query.Where(b => b.Status == bookingStatus.Value);
+        }
+
+        if (startDate.HasValue)
+        {
+            query = query.Where(b => b.CreatedAt >= startDate.Value);
+        }
+
+        if (endDate.HasValue)
+        {
+            query = query.Where(b => b.CreatedAt <= endDate.Value);
+        }
+
+        if (paymentStatus.HasValue)
+        {
+            if (paymentStatus.Value == (int)PaymentStatus.Success)
+            {
+                query = query.Where(b => b.Payments.Any(p => p.Status == (int)PaymentStatus.Success));
+            }
+            else
+            {
+                query = query.Where(b => 
+                    !b.Payments.Any(p => p.Status == (int)PaymentStatus.Success) &&
+                    b.Payments.OrderByDescending(p => p.CreatedAt).FirstOrDefault() != null &&
+                    b.Payments.OrderByDescending(p => p.CreatedAt).FirstOrDefault().Status == paymentStatus.Value
+                );
+            }
+        }
+
+        var totalItems = await query.CountAsync();
+        var totalPages = (int)Math.Ceiling(totalItems / (double)request.PageSize);
 
         var bookings = await query
             .OrderByDescending(b => b.CreatedAt)
+            .Skip((request.PageNumber - 1) * request.PageSize)
+            .Take(request.PageSize)
             .ToListAsync();
 
-        var response = bookings.Select(MapToBookingResponse).ToList();
-        return ApiResponse<IReadOnlyList<BookingResponse>>.Ok(response, "Bookings retrieved successfully.");
+        var items = bookings.Select(b => 
+        {
+            var selectedPayment = b.Payments.FirstOrDefault(p => p.Status == (int)PaymentStatus.Success) 
+                                ?? b.Payments.OrderByDescending(p => p.CreatedAt).FirstOrDefault();
+            
+            return new BookingHistoryResponse
+            {
+                Id = b.Id,
+                CustomerId = b.CustomerId,
+                PtProfileId = b.PtProfileId,
+                PackageId = b.PackageId,
+                Status = b.Status,
+                TotalAmount = b.TotalAmount,
+                SessionCount = b.SessionCount,
+                CreatedAt = b.CreatedAt,
+                PackageName = b.Package?.Name ?? string.Empty,
+                PtName = b.PtProfile?.User?.FullName ?? string.Empty,
+                PaymentStatus = selectedPayment?.Status,
+                PaidAt = selectedPayment?.PaidAt
+            };
+        }).ToList();
+
+        var pagedResult = new PagedResult<BookingHistoryResponse>
+        {
+            Items = items,
+            PageNumber = request.PageNumber,
+            PageSize = request.PageSize,
+            TotalItems = totalItems,
+            TotalPages = totalPages
+        };
+
+        return ApiResponse<PagedResult<BookingHistoryResponse>>.Ok(pagedResult, "Bookings retrieved successfully.");
     }
 
     public async Task<ApiResponse<BookingDetailResponse>> GetBookingByIdAsync(Guid bookingId)

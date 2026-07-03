@@ -27,9 +27,14 @@ public class BookingsController : ControllerBase
     }
 
     [HttpGet("my")]
-    public async Task<IActionResult> GetMyBookingsAsync()
+    public async Task<IActionResult> GetMyBookingsAsync(
+        [FromQuery] LockedIn.BusinessObject.Common.PaginationRequest request,
+        [FromQuery] int? bookingStatus,
+        [FromQuery] int? paymentStatus,
+        [FromQuery] DateTime? startDate,
+        [FromQuery] DateTime? endDate)
     {
-        var result = await _service.GetMyBookingsAsync();
+        var result = await _service.GetMyBookingsAsync(request, bookingStatus, paymentStatus, startDate, endDate);
         return Ok(result);
     }
 

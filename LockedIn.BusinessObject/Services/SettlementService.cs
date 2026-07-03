@@ -23,40 +23,107 @@ public class SettlementService : ISettlementService
         _currentUserService = currentUserService;
     }
 
-    public async Task<ApiResponse<IReadOnlyList<SettlementResponse>>> GetMySettlementsAsync()
+    public async Task<ApiResponse<SettlementHistoryResult>> GetMySettlementsAsync(
+        PaginationRequest request, 
+        int? settlementStatus, 
+        DateTime? startDate, 
+        DateTime? endDate)
     {
         if (!_currentUserService.IsAuthenticated || !_currentUserService.UserId.HasValue)
         {
-            return ApiResponse<IReadOnlyList<SettlementResponse>>.Fail("User is not authenticated.");
+            return ApiResponse<SettlementHistoryResult>.Fail("User is not authenticated.");
         }
 
         if (_currentUserService.Role == (int)UserRole.Customer)
         {
-            return ApiResponse<IReadOnlyList<SettlementResponse>>.Fail("Only PT or Admin can view settlements.");
+            return ApiResponse<SettlementHistoryResult>.Fail("Only PT or Admin can view settlements.");
         }
 
-        IQueryable<Settlement> query = _unitOfWork.Settlements.Query();
+        IQueryable<Settlement> query = _unitOfWork.Settlements.Query()
+            .Include(s => s.Booking)
+            .ThenInclude(b => b.Package)
+            .Include(s => s.Booking)
+            .ThenInclude(b => b.Customer)
+            .ThenInclude(c => c.User);
 
         if (_currentUserService.Role == (int)UserRole.PersonalTrainer)
         {
             var ptProfile = await GetCurrentPtProfileAsync();
             if (ptProfile == null)
             {
-                return ApiResponse<IReadOnlyList<SettlementResponse>>.Fail("Personal trainer profile not found.");
+                return ApiResponse<SettlementHistoryResult>.Fail("Personal trainer profile not found.");
             }
             query = query.Where(s => s.PtProfileId == ptProfile.Id);
         }
         else if (_currentUserService.Role != (int)UserRole.Admin)
         {
-            return ApiResponse<IReadOnlyList<SettlementResponse>>.Fail("Access denied.");
+            return ApiResponse<SettlementHistoryResult>.Fail("Access denied.");
         }
+
+        if (settlementStatus.HasValue)
+        {
+            query = query.Where(s => s.Status == settlementStatus.Value);
+        }
+
+        if (startDate.HasValue)
+        {
+            query = query.Where(s => s.CreatedAt >= startDate.Value);
+        }
+
+        if (endDate.HasValue)
+        {
+            query = query.Where(s => s.CreatedAt <= endDate.Value);
+        }
+
+        // Calculate totals based on the filtered query
+        var totalSettled = await query.Where(s => s.Status == (int)SettlementStatus.Settled).SumAsync(s => s.NetAmount);
+        var totalPending = await query.Where(s => s.Status == (int)SettlementStatus.Pending).SumAsync(s => s.NetAmount);
+        var countSettled = await query.Where(s => s.Status == (int)SettlementStatus.Settled).CountAsync();
+        var countPending = await query.Where(s => s.Status == (int)SettlementStatus.Pending).CountAsync();
+
+        var totalItems = await query.CountAsync();
+        var totalPages = (int)Math.Ceiling(totalItems / (double)request.PageSize);
 
         var settlements = await query
             .OrderByDescending(s => s.CreatedAt)
+            .Skip((request.PageNumber - 1) * request.PageSize)
+            .Take(request.PageSize)
             .ToListAsync();
 
-        var response = settlements.Select(MapToSettlementResponse).ToList();
-        return ApiResponse<IReadOnlyList<SettlementResponse>>.Ok(response, "Settlements retrieved successfully.");
+        var items = settlements.Select(s => new SettlementHistoryResponse
+        {
+            Id = s.Id,
+            BookingId = s.BookingId,
+            PtProfileId = s.PtProfileId,
+            GrossAmount = s.GrossAmount,
+            PlatformFee = s.PlatformFee,
+            NetAmount = s.NetAmount,
+            Status = s.Status,
+            SettledAt = s.SettledAt,
+            CreatedAt = s.CreatedAt,
+            PackageName = s.Booking?.Package?.Name ?? string.Empty,
+            CustomerName = s.Booking?.Customer?.User?.FullName ?? string.Empty
+        }).ToList();
+
+        var pagedResult = new PagedResult<SettlementHistoryResponse>
+        {
+            Items = items,
+            PageNumber = request.PageNumber,
+            PageSize = request.PageSize,
+            TotalItems = totalItems,
+            TotalPages = totalPages
+        };
+
+        var historyResult = new SettlementHistoryResult
+        {
+            TotalSettled = totalSettled,
+            TotalPending = totalPending,
+            CountSettled = countSettled,
+            CountPending = countPending,
+            Settlements = pagedResult
+        };
+
+        return ApiResponse<SettlementHistoryResult>.Ok(historyResult, "Settlements retrieved successfully.");
     }
 
     public async Task<ApiResponse<SettlementResponse>> GetSettlementByIdAsync(Guid settlementId)

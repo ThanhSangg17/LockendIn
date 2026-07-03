@@ -8,6 +8,6 @@ namespace LockedIn.BusinessObject.Interfaces;
 
 public interface ISettlementService
 {
-    Task<ApiResponse<IReadOnlyList<SettlementResponse>>> GetMySettlementsAsync();
+    Task<ApiResponse<SettlementHistoryResult>> GetMySettlementsAsync(PaginationRequest request, int? settlementStatus, DateTime? startDate, DateTime? endDate);
     Task<ApiResponse<SettlementResponse>> GetSettlementByIdAsync(Guid settlementId);
 }
