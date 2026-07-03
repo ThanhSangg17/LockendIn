@@ -61,6 +61,13 @@ public class AdminController : ControllerBase
         return Ok(result);
     }
 
+    [HttpGet("pt-verifications/{ptProfileId}")]
+    public async Task<IActionResult> GetPtVerificationByIdAsync(Guid ptProfileId)
+    {
+        var result = await _service.GetPtVerificationByIdAsync(ptProfileId);
+        return Ok(result);
+    }
+
     [HttpPost("pt-verifications/{ptProfileId}/approve")]
     public async Task<IActionResult> ApprovePtAsync(Guid ptProfileId)
     {
@@ -69,9 +76,9 @@ public class AdminController : ControllerBase
     }
 
     [HttpPost("pt-verifications/{ptProfileId}/reject")]
-    public async Task<IActionResult> RejectPtAsync(Guid ptProfileId)
+    public async Task<IActionResult> RejectPtAsync(Guid ptProfileId, [FromBody] LockedIn.BusinessObject.DTOs.Admin.RejectPtRequest request)
     {
-        var result = await _service.RejectPtAsync(ptProfileId);
+        var result = await _service.RejectPtAsync(ptProfileId, request);
         return Ok(result);
     }
 

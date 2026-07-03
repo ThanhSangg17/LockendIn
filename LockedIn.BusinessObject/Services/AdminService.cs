@@ -232,7 +232,7 @@ public class AdminService : IAdminService
 
         var ptProfiles = await _unitOfWork.PtProfiles.Query()
             .Include(pt => pt.User)
-            .Where(pt => pt.VerificationStatus != (int)PtVerificationStatus.Approved && !pt.IsDeleted)
+            .Where(pt => pt.VerificationStatus == (int)PtVerificationStatus.Submitted && !pt.IsDeleted)
             .OrderByDescending(pt => pt.CreatedAt)
             .ToListAsync();
 
@@ -252,6 +252,57 @@ public class AdminService : IAdminService
         return ApiResponse<IReadOnlyList<PtProfileResponse>>.Ok(response, "PT verifications retrieved successfully.");
     }
 
+    public async Task<ApiResponse<PtVerificationDetailResponse>> GetPtVerificationByIdAsync(Guid ptProfileId)
+    {
+        if (!_currentUserService.IsAuthenticated || _currentUserService.Role != (int)UserRole.Admin)
+        {
+            return ApiResponse<PtVerificationDetailResponse>.Fail("Only Admins can perform this action.");
+        }
+
+        var ptProfile = await _unitOfWork.PtProfiles.Query()
+            .Include(pt => pt.User)
+            .Include(pt => pt.PtDocuments)
+            .FirstOrDefaultAsync(pt => pt.Id == ptProfileId && !pt.IsDeleted);
+
+        if (ptProfile == null)
+        {
+            return ApiResponse<PtVerificationDetailResponse>.Fail("PT profile not found.");
+        }
+
+        var profileResponse = new PtProfileResponse
+        {
+            Id = ptProfile.Id,
+            UserId = ptProfile.UserId,
+            FullName = ptProfile.User?.FullName ?? string.Empty,
+            Bio = ptProfile.Bio,
+            Specialization = ptProfile.Specialization,
+            ExperienceYears = ptProfile.ExperienceYears,
+            VerificationStatus = ptProfile.VerificationStatus,
+            AverageRating = ptProfile.AverageRating,
+            TotalReviews = ptProfile.TotalReviews
+        };
+
+        var documentsResponse = ptProfile.PtDocuments.Select(d => new PtDocumentResponse
+        {
+            Id = d.Id,
+            PtProfileId = d.PtProfileId,
+            DocumentType = d.DocumentType,
+            FileUrl = d.FileUrl,
+            Status = d.Status,
+            UploadedAt = d.UploadedAt
+        }).ToList();
+
+        var response = new PtVerificationDetailResponse
+        {
+            Profile = profileResponse,
+            Email = ptProfile.User?.Email ?? string.Empty,
+            Phone = ptProfile.User?.Phone ?? string.Empty,
+            Documents = documentsResponse
+        };
+
+        return ApiResponse<PtVerificationDetailResponse>.Ok(response, "PT verification details retrieved successfully.");
+    }
+
     public async Task<ApiResponse<PtProfileResponse>> ApprovePtAsync(Guid ptProfileId)
     {
         if (!_currentUserService.IsAuthenticated || _currentUserService.Role != (int)UserRole.Admin)
@@ -261,6 +312,7 @@ public class AdminService : IAdminService
 
         var ptProfile = await _unitOfWork.PtProfiles.Query()
             .Include(pt => pt.User)
+            .Include(pt => pt.PtDocuments)
             .FirstOrDefaultAsync(pt => pt.Id == ptProfileId && !pt.IsDeleted);
 
         if (ptProfile == null)
@@ -268,11 +320,23 @@ public class AdminService : IAdminService
             return ApiResponse<PtProfileResponse>.Fail("PT profile not found.");
         }
 
+        if (ptProfile.VerificationStatus != (int)PtVerificationStatus.Submitted)
+        {
+            return ApiResponse<PtProfileResponse>.Fail("Only submitted profiles can be approved.");
+        }
+
         ptProfile.VerificationStatus = (int)PtVerificationStatus.Approved;
         ptProfile.ApprovedAt = DateTime.UtcNow;
         ptProfile.UpdatedAt = DateTime.UtcNow;
 
         _unitOfWork.PtProfiles.Update(ptProfile);
+
+        // Approve all documents
+        foreach (var document in ptProfile.PtDocuments)
+        {
+            document.Status = 2; // Approved
+            _unitOfWork.PtDocuments.Update(document);
+        }
 
         // Audit log
         try
@@ -299,7 +363,7 @@ public class AdminService : IAdminService
                 Id = Guid.NewGuid(),
                 UserId = ptProfile.UserId,
                 Title = "PT verification approved",
-                Content = "Your PT profile has been approved.",
+                Content = "Your PT profile has been approved. You can now create packages and receive bookings.",
                 Type = (int)NotificationType.System,
                 IsRead = false,
                 IsDeleted = false,
@@ -327,7 +391,7 @@ public class AdminService : IAdminService
         return ApiResponse<PtProfileResponse>.Ok(response, "PT profile approved successfully.");
     }
 
-    public async Task<ApiResponse<PtProfileResponse>> RejectPtAsync(Guid ptProfileId)
+    public async Task<ApiResponse<PtProfileResponse>> RejectPtAsync(Guid ptProfileId, RejectPtRequest request)
     {
         if (!_currentUserService.IsAuthenticated || _currentUserService.Role != (int)UserRole.Admin)
         {
@@ -341,6 +405,11 @@ public class AdminService : IAdminService
         if (ptProfile == null)
         {
             return ApiResponse<PtProfileResponse>.Fail("PT profile not found.");
+        }
+
+        if (ptProfile.VerificationStatus != (int)PtVerificationStatus.Submitted)
+        {
+            return ApiResponse<PtProfileResponse>.Fail("Only submitted profiles can be rejected.");
         }
 
         ptProfile.VerificationStatus = (int)PtVerificationStatus.Rejected;
@@ -358,7 +427,7 @@ public class AdminService : IAdminService
                 Action = "RejectPT",
                 EntityName = "PtProfile",
                 EntityId = ptProfileId,
-                MetadataJson = System.Text.Json.JsonSerializer.Serialize(new { Email = ptProfile.User?.Email }),
+                MetadataJson = System.Text.Json.JsonSerializer.Serialize(new { Email = ptProfile.User?.Email, Reason = request.Reason }),
                 CreatedAt = DateTime.UtcNow
             };
             await _unitOfWork.AuditLogs.AddAsync(auditLog);
@@ -373,7 +442,7 @@ public class AdminService : IAdminService
                 Id = Guid.NewGuid(),
                 UserId = ptProfile.UserId,
                 Title = "PT verification rejected",
-                Content = "Your PT profile verification has been rejected.",
+                Content = $"Your PT profile verification has been rejected. Reason: {request.Reason}",
                 Type = (int)NotificationType.System,
                 IsRead = false,
                 IsDeleted = false,

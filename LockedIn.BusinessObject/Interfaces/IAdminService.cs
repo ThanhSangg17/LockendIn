@@ -16,8 +16,9 @@ public interface IAdminService
     Task<ApiResponse<AdminUserResponse>> BanUserAsync(Guid userId);
     Task<ApiResponse<AdminUserResponse>> UnbanUserAsync(Guid userId);
     Task<ApiResponse<IReadOnlyList<PtProfileResponse>>> GetPtVerificationsAsync();
+    Task<ApiResponse<PtVerificationDetailResponse>> GetPtVerificationByIdAsync(Guid ptProfileId);
     Task<ApiResponse<PtProfileResponse>> ApprovePtAsync(Guid ptProfileId);
-    Task<ApiResponse<PtProfileResponse>> RejectPtAsync(Guid ptProfileId);
+    Task<ApiResponse<PtProfileResponse>> RejectPtAsync(Guid ptProfileId, RejectPtRequest request);
     Task<ApiResponse<IReadOnlyList<AdminPaymentResponse>>> GetPaymentsAsync();
     Task<ApiResponse<AdminPaymentResponse>> GetPaymentByIdAsync(Guid paymentId);
     Task<ApiResponse<IReadOnlyList<AdminDisputeResponse>>> GetDisputesAsync();

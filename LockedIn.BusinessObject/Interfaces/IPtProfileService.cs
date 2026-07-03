@@ -13,4 +13,5 @@ public interface IPtProfileService
     Task<ApiResponse<PtDocumentResponse>> UploadDocumentAsync(UploadPtDocumentRequest request);
     Task<ApiResponse<IReadOnlyList<PtDocumentResponse>>> GetMyDocumentsAsync();
     Task<ApiResponse<string>> DeleteDocumentAsync(Guid documentId);
+    Task<ApiResponse<string>> SubmitVerificationAsync();
 }

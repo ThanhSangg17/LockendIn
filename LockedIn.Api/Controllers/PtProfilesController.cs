@@ -53,4 +53,11 @@ public class PtProfilesController : ControllerBase
         var result = await _service.DeleteDocumentAsync(documentId);
         return Ok(result);
     }
+
+    [HttpPost("me/verification/submit")]
+    public async Task<IActionResult> SubmitVerificationAsync()
+    {
+        var result = await _service.SubmitVerificationAsync();
+        return Ok(result);
+    }
 }
