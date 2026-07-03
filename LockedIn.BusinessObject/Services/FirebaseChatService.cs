@@ -31,61 +31,43 @@ public class FirebaseChatService : IFirebaseChatService
 
         var serviceAccountPath = configuration["Firebase:ServiceAccountPath"];
         var projectId = configuration["Firebase:ProjectId"];
-
-        Console.WriteLine($"Config ProjectId: '{projectId}'");
-        Console.WriteLine($"ServiceAccountPath: '{serviceAccountPath}'");
-        bool fileExists = !string.IsNullOrEmpty(serviceAccountPath) && System.IO.File.Exists(serviceAccountPath);
-        Console.WriteLine($"FileExists: {fileExists}");
-
-        if (fileExists)
-        {
-            try
-            {
-                var jsonContent = System.IO.File.ReadAllText(serviceAccountPath!);
-                using (var jsonDoc = System.Text.Json.JsonDocument.Parse(jsonContent))
-                {
-                    if (jsonDoc.RootElement.TryGetProperty("client_email", out var clientEmailProp))
-                    {
-                        Console.WriteLine($"Json client_email: '{clientEmailProp.GetString()}'");
-                    }
-                    else
-                    {
-                        Console.WriteLine("Json client_email: Not found in JSON");
-                    }
-
-                    if (jsonDoc.RootElement.TryGetProperty("project_id", out var projectIdProp))
-                    {
-                        Console.WriteLine($"Json project_id: '{projectIdProp.GetString()}'");
-                    }
-                    else
-                    {
-                        Console.WriteLine("Json project_id: Not found in JSON");
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error parsing service account JSON: {ex.Message}");
-            }
-        }
-        else
-        {
-            Console.WriteLine("Firebase service account JSON: File not found or path is empty");
-        }
-
-        if (string.IsNullOrEmpty(serviceAccountPath))
-        {
-            throw new InvalidOperationException("Firebase service account path is not configured (Firebase:ServiceAccountPath).");
-        }
+        var serviceAccountBase64 = configuration["Firebase:ServiceAccountJsonBase64"];
 
         if (string.IsNullOrEmpty(projectId))
         {
             throw new InvalidOperationException("Firebase project ID is not configured (Firebase:ProjectId).");
         }
 
-        Console.WriteLine($"FirebaseApp.DefaultInstance exists before create: {FirebaseApp.DefaultInstance != null}");
+        GoogleCredential credential;
 
-        var credential = GoogleCredential.FromFile(serviceAccountPath!);
+        if (!string.IsNullOrEmpty(serviceAccountBase64))
+        {
+            try
+            {
+                var base64EncodedBytes = Convert.FromBase64String(serviceAccountBase64);
+                var jsonContent = System.Text.Encoding.UTF8.GetString(base64EncodedBytes);
+                credential = GoogleCredential.FromJson(jsonContent);
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException("Failed to load Firebase credential from Base64 configuration.", ex);
+            }
+        }
+        else if (!string.IsNullOrEmpty(serviceAccountPath) && System.IO.File.Exists(serviceAccountPath))
+        {
+            try
+            {
+                credential = GoogleCredential.FromFile(serviceAccountPath);
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException("Failed to load Firebase credential from file path.", ex);
+            }
+        }
+        else
+        {
+            throw new InvalidOperationException("Firebase service account is not properly configured. Neither valid Base64 nor valid file path was provided.");
+        }
 
         if (FirebaseApp.DefaultInstance == null)
         {
@@ -95,15 +77,11 @@ public class FirebaseChatService : IFirebaseChatService
             });
         }
 
-        Console.WriteLine($"FirebaseApp.DefaultInstance exists after create: {FirebaseApp.DefaultInstance != null}");
-
         _firestoreDb = new FirestoreDbBuilder
         {
             ProjectId = projectId,
             Credential = credential
         }.Build();
-
-        Console.WriteLine($"FirestoreDb.ProjectId: '{_firestoreDb.ProjectId}'");
     }
 
     public async Task<ApiResponse<ChatMessageResponse>> SendMessageAsync(SendMessageRequest request)
