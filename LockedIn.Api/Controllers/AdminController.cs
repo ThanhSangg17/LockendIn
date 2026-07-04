@@ -151,4 +151,32 @@ public class AdminController : ControllerBase
         var result = await _service.GetAuditLogsAsync();
         return Ok(result);
     }
+
+    [HttpGet("pt-profile-edit-requests")]
+    public async Task<IActionResult> GetPtProfileEditRequestsAsync([FromQuery] int? status = null)
+    {
+        var result = await _service.GetPtProfileEditRequestsAsync(status);
+        return Ok(result);
+    }
+
+    [HttpGet("pt-profile-edit-requests/{requestId}")]
+    public async Task<IActionResult> GetPtProfileEditRequestByIdAsync(Guid requestId)
+    {
+        var result = await _service.GetPtProfileEditRequestByIdAsync(requestId);
+        return Ok(result);
+    }
+
+    [HttpPost("pt-profile-edit-requests/{requestId}/approve")]
+    public async Task<IActionResult> ApprovePtProfileEditRequestAsync(Guid requestId)
+    {
+        var result = await _service.ApprovePtProfileEditRequestAsync(requestId);
+        return Ok(result);
+    }
+
+    [HttpPost("pt-profile-edit-requests/{requestId}/reject")]
+    public async Task<IActionResult> RejectPtProfileEditRequestAsync(Guid requestId, [FromBody] LockedIn.BusinessObject.DTOs.Admin.RejectProfileEditRequest request)
+    {
+        var result = await _service.RejectPtProfileEditRequestAsync(requestId, request);
+        return Ok(result);
+    }
 }

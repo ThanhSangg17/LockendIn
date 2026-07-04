@@ -7,6 +7,7 @@ using LockedIn.BusinessObject.Common;
 using LockedIn.BusinessObject.Interfaces;
 using LockedIn.DataAccess.UnitOfWork;
 using LockedIn.BusinessObject.DTOs.PtProfiles;
+using LockedIn.BusinessObject.DTOs.PtProfile;
 using LockedIn.DataAccess.Models;
 using LockedIn.BusinessObject.Enums;
 
@@ -235,6 +236,100 @@ public class PtProfileService : IPtProfileService
             FileUrl = doc.FileUrl,
             Status = doc.Status,
             UploadedAt = doc.UploadedAt
+        };
+    }
+    public async Task<ApiResponse<ProfileEditRequestResponse>> SubmitProfileEditRequestAsync(SubmitProfileEditRequest request)
+    {
+        var (ptProfile, error) = await GetCurrentPtProfileAsync();
+        if (error != null) return ApiResponse<ProfileEditRequestResponse>.Fail(error);
+
+        if (ptProfile!.VerificationStatus != (int)PtVerificationStatus.Approved)
+        {
+            return ApiResponse<ProfileEditRequestResponse>.Fail("Only approved PTs can submit a profile edit request.");
+        }
+
+        request.Bio = request.Bio?.Trim();
+        request.Specialization = request.Specialization?.Trim();
+
+        if (string.IsNullOrWhiteSpace(request.Bio))
+            return ApiResponse<ProfileEditRequestResponse>.Fail("Bio cannot be empty.");
+
+        if (string.IsNullOrWhiteSpace(request.Specialization))
+            return ApiResponse<ProfileEditRequestResponse>.Fail("Specialization cannot be empty.");
+
+        if (request.ExperienceYears <= 0)
+            return ApiResponse<ProfileEditRequestResponse>.Fail("Experience years must be greater than 0.");
+
+        var currentBio = ptProfile.Bio?.Trim();
+        var currentSpecialization = ptProfile.Specialization?.Trim();
+
+        if (request.Bio == currentBio && 
+            request.Specialization == currentSpecialization && 
+            request.ExperienceYears == ptProfile.ExperienceYears)
+        {
+            return ApiResponse<ProfileEditRequestResponse>.Fail("No changes detected in your profile data.");
+        }
+
+        var existingPendingRequest = await _unitOfWork.PtProfileEditRequests.Query()
+            .FirstOrDefaultAsync(r => r.PtProfileId == ptProfile.Id && r.Status == (int)PtProfileEditRequestStatus.Pending);
+
+        if (existingPendingRequest != null)
+        {
+            return ApiResponse<ProfileEditRequestResponse>.Fail("You already have a pending profile edit request.");
+        }
+
+        var editRequest = new PtProfileEditRequest
+        {
+            Id = Guid.NewGuid(),
+            PtProfileId = ptProfile.Id,
+            CurrentBio = ptProfile.Bio,
+            CurrentSpecialization = ptProfile.Specialization,
+            CurrentExperienceYears = ptProfile.ExperienceYears,
+            RequestedBio = request.Bio,
+            RequestedSpecialization = request.Specialization,
+            RequestedExperienceYears = request.ExperienceYears,
+            Status = (int)PtProfileEditRequestStatus.Pending,
+            RequestedAt = DateTime.UtcNow,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        await _unitOfWork.PtProfileEditRequests.AddAsync(editRequest);
+        await _unitOfWork.SaveChangesAsync();
+
+        return ApiResponse<ProfileEditRequestResponse>.Ok(MapToProfileEditRequestResponse(editRequest), "Profile edit request submitted successfully.");
+    }
+
+    public async Task<ApiResponse<IReadOnlyList<ProfileEditRequestResponse>>> GetMyProfileEditRequestsAsync()
+    {
+        var (ptProfile, error) = await GetCurrentPtProfileAsync();
+        if (error != null) return ApiResponse<IReadOnlyList<ProfileEditRequestResponse>>.Fail(error);
+
+        var requests = await _unitOfWork.PtProfileEditRequests.Query()
+            .Where(r => r.PtProfileId == ptProfile!.Id)
+            .OrderByDescending(r => r.CreatedAt)
+            .ToListAsync();
+
+        var response = requests.Select(MapToProfileEditRequestResponse).ToList();
+        return ApiResponse<IReadOnlyList<ProfileEditRequestResponse>>.Ok(response, "Profile edit requests retrieved successfully.");
+    }
+
+    private ProfileEditRequestResponse MapToProfileEditRequestResponse(PtProfileEditRequest request)
+    {
+        return new ProfileEditRequestResponse
+        {
+            Id = request.Id,
+            PtProfileId = request.PtProfileId,
+            CurrentBio = request.CurrentBio,
+            CurrentSpecialization = request.CurrentSpecialization,
+            CurrentExperienceYears = request.CurrentExperienceYears,
+            RequestedBio = request.RequestedBio,
+            RequestedSpecialization = request.RequestedSpecialization,
+            RequestedExperienceYears = request.RequestedExperienceYears,
+            Status = request.Status,
+            RejectionReason = request.RejectionReason,
+            RequestedAt = request.RequestedAt,
+            ReviewedAt = request.ReviewedAt,
+            ReviewedByAdminId = request.ReviewedByAdminId
         };
     }
 }

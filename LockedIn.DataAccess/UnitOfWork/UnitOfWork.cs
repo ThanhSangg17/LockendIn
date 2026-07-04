@@ -15,6 +15,7 @@ public class UnitOfWork : IUnitOfWork
     public IRefreshTokenRepository RefreshTokens { get; }
     public ICustomerProfileRepository CustomerProfiles { get; }
     public IPtProfileRepository PtProfiles { get; }
+    public IPtProfileEditRequestRepository PtProfileEditRequests { get; }
     public IPtDocumentRepository PtDocuments { get; }
     public IPackageRepository Packages { get; }
     public IBookingRepository Bookings { get; }
@@ -39,6 +40,7 @@ public class UnitOfWork : IUnitOfWork
         RefreshTokens = new RefreshTokenRepository(_context);
         CustomerProfiles = new CustomerProfileRepository(_context);
         PtProfiles = new PtProfileRepository(_context);
+        PtProfileEditRequests = new PtProfileEditRequestRepository(_context);
         PtDocuments = new PtDocumentRepository(_context);
         Packages = new PackageRepository(_context);
         Bookings = new BookingRepository(_context);

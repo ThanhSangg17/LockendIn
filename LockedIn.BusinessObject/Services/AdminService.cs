@@ -9,6 +9,7 @@ using LockedIn.DataAccess.UnitOfWork;
 using LockedIn.DataAccess.Models;
 using LockedIn.BusinessObject.DTOs.Admin;
 using LockedIn.BusinessObject.DTOs.Disputes;
+using LockedIn.BusinessObject.DTOs.PtProfile;
 using LockedIn.BusinessObject.DTOs.PtProfiles;
 using LockedIn.BusinessObject.Enums;
 
@@ -1075,6 +1076,175 @@ public class AdminService : IAdminService
         return ApiResponse<IReadOnlyList<AuditLogResponse>>.Ok(response, "Audit logs retrieved successfully.");
     }
 
+    public async Task<ApiResponse<IReadOnlyList<ProfileEditRequestResponse>>> GetPtProfileEditRequestsAsync(int? status = null)
+    {
+        if (!_currentUserService.IsAuthenticated || _currentUserService.Role != (int)UserRole.Admin)
+            return ApiResponse<IReadOnlyList<ProfileEditRequestResponse>>.Fail("Only Admins can perform this action.");
+
+        var query = _unitOfWork.PtProfileEditRequests.Query();
+        if (status.HasValue)
+        {
+            query = query.Where(r => r.Status == status.Value);
+        }
+
+        var requests = await query.OrderByDescending(r => r.CreatedAt).ToListAsync();
+        var response = requests.Select(MapToProfileEditRequestResponse).ToList();
+
+        return ApiResponse<IReadOnlyList<ProfileEditRequestResponse>>.Ok(response, "PT profile edit requests retrieved successfully.");
+    }
+
+    public async Task<ApiResponse<ProfileEditRequestResponse>> GetPtProfileEditRequestByIdAsync(Guid requestId)
+    {
+        if (!_currentUserService.IsAuthenticated || _currentUserService.Role != (int)UserRole.Admin)
+            return ApiResponse<ProfileEditRequestResponse>.Fail("Only Admins can perform this action.");
+
+        var request = await _unitOfWork.PtProfileEditRequests.Query()
+            .FirstOrDefaultAsync(r => r.Id == requestId);
+
+        if (request == null)
+            return ApiResponse<ProfileEditRequestResponse>.Fail("Request not found.");
+
+        return ApiResponse<ProfileEditRequestResponse>.Ok(MapToProfileEditRequestResponse(request), "Request retrieved successfully.");
+    }
+
+    public async Task<ApiResponse<ProfileEditRequestResponse>> ApprovePtProfileEditRequestAsync(Guid requestId)
+    {
+        if (!_currentUserService.IsAuthenticated || _currentUserService.Role != (int)UserRole.Admin)
+            return ApiResponse<ProfileEditRequestResponse>.Fail("Only Admins can perform this action.");
+
+        var request = await _unitOfWork.PtProfileEditRequests.Query()
+            .Include(r => r.PtProfile)
+            .FirstOrDefaultAsync(r => r.Id == requestId);
+
+        if (request == null)
+            return ApiResponse<ProfileEditRequestResponse>.Fail("Request not found.");
+
+        if (request.Status != (int)PtProfileEditRequestStatus.Pending)
+            return ApiResponse<ProfileEditRequestResponse>.Fail("Only pending requests can be approved.");
+
+        await _unitOfWork.BeginTransactionAsync();
+        try
+        {
+            request.Status = (int)PtProfileEditRequestStatus.Approved;
+            request.ReviewedAt = DateTime.UtcNow;
+            request.ReviewedByAdminId = _currentUserService.UserId;
+            request.UpdatedAt = DateTime.UtcNow;
+            _unitOfWork.PtProfileEditRequests.Update(request);
+
+            var profile = request.PtProfile;
+            profile.Bio = request.RequestedBio;
+            profile.Specialization = request.RequestedSpecialization;
+            profile.ExperienceYears = request.RequestedExperienceYears;
+            profile.UpdatedAt = DateTime.UtcNow;
+            _unitOfWork.PtProfiles.Update(profile);
+
+            try
+            {
+                var notification = new Notification
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = profile.UserId,
+                    Title = "Profile Edit Approved",
+                    Content = "Your profile edit request has been approved.",
+                    Type = (int)NotificationType.System,
+                    IsRead = false,
+                    IsDeleted = false,
+                    CreatedAt = DateTime.UtcNow
+                };
+                await _unitOfWork.Notifications.AddAsync(notification);
+
+                var auditLog = new AuditLog
+                {
+                    Id = Guid.NewGuid(),
+                    ActorUserId = _currentUserService.UserId!.Value,
+                    Action = "ApproveProfileEdit",
+                    EntityName = "PtProfileEditRequest",
+                    EntityId = requestId,
+                    MetadataJson = "{}",
+                    CreatedAt = DateTime.UtcNow
+                };
+                await _unitOfWork.AuditLogs.AddAsync(auditLog);
+            }
+            catch {}
+
+            await _unitOfWork.SaveChangesAsync();
+            await _unitOfWork.CommitTransactionAsync();
+
+            return ApiResponse<ProfileEditRequestResponse>.Ok(MapToProfileEditRequestResponse(request), "Request approved successfully.");
+        }
+        catch (Exception ex)
+        {
+            await _unitOfWork.RollbackTransactionAsync();
+            return ApiResponse<ProfileEditRequestResponse>.Fail($"Failed to approve request: {ex.Message}");
+        }
+    }
+
+    public async Task<ApiResponse<ProfileEditRequestResponse>> RejectPtProfileEditRequestAsync(Guid requestId, RejectProfileEditRequest rejectRequest)
+    {
+        if (!_currentUserService.IsAuthenticated || _currentUserService.Role != (int)UserRole.Admin)
+            return ApiResponse<ProfileEditRequestResponse>.Fail("Only Admins can perform this action.");
+
+        var request = await _unitOfWork.PtProfileEditRequests.Query()
+            .Include(r => r.PtProfile)
+            .FirstOrDefaultAsync(r => r.Id == requestId);
+
+        if (request == null)
+            return ApiResponse<ProfileEditRequestResponse>.Fail("Request not found.");
+
+        if (request.Status != (int)PtProfileEditRequestStatus.Pending)
+            return ApiResponse<ProfileEditRequestResponse>.Fail("Only pending requests can be rejected.");
+
+        await _unitOfWork.BeginTransactionAsync();
+        try
+        {
+            request.Status = (int)PtProfileEditRequestStatus.Rejected;
+            request.RejectionReason = rejectRequest.Reason;
+            request.ReviewedAt = DateTime.UtcNow;
+            request.ReviewedByAdminId = _currentUserService.UserId;
+            request.UpdatedAt = DateTime.UtcNow;
+            _unitOfWork.PtProfileEditRequests.Update(request);
+
+            try
+            {
+                var notification = new Notification
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = request.PtProfile.UserId,
+                    Title = "Profile Edit Rejected",
+                    Content = $"Your profile edit request was rejected. Reason: {rejectRequest.Reason}",
+                    Type = (int)NotificationType.System,
+                    IsRead = false,
+                    IsDeleted = false,
+                    CreatedAt = DateTime.UtcNow
+                };
+                await _unitOfWork.Notifications.AddAsync(notification);
+
+                var auditLog = new AuditLog
+                {
+                    Id = Guid.NewGuid(),
+                    ActorUserId = _currentUserService.UserId!.Value,
+                    Action = "RejectProfileEdit",
+                    EntityName = "PtProfileEditRequest",
+                    EntityId = requestId,
+                    MetadataJson = System.Text.Json.JsonSerializer.Serialize(new { Reason = rejectRequest.Reason }),
+                    CreatedAt = DateTime.UtcNow
+                };
+                await _unitOfWork.AuditLogs.AddAsync(auditLog);
+            }
+            catch {}
+
+            await _unitOfWork.SaveChangesAsync();
+            await _unitOfWork.CommitTransactionAsync();
+
+            return ApiResponse<ProfileEditRequestResponse>.Ok(MapToProfileEditRequestResponse(request), "Request rejected successfully.");
+        }
+        catch (Exception ex)
+        {
+            await _unitOfWork.RollbackTransactionAsync();
+            return ApiResponse<ProfileEditRequestResponse>.Fail($"Failed to reject request: {ex.Message}");
+        }
+    }
+
     #region Helper Methods
 
     private AdminSettlementResponse MapToAdminSettlementResponse(Settlement settlement)
@@ -1089,6 +1259,26 @@ public class AdminService : IAdminService
             NetAmount = settlement.NetAmount,
             Status = settlement.Status,
             CreatedAt = settlement.CreatedAt
+        };
+    }
+
+    private ProfileEditRequestResponse MapToProfileEditRequestResponse(PtProfileEditRequest request)
+    {
+        return new ProfileEditRequestResponse
+        {
+            Id = request.Id,
+            PtProfileId = request.PtProfileId,
+            CurrentBio = request.CurrentBio,
+            CurrentSpecialization = request.CurrentSpecialization,
+            CurrentExperienceYears = request.CurrentExperienceYears,
+            RequestedBio = request.RequestedBio,
+            RequestedSpecialization = request.RequestedSpecialization,
+            RequestedExperienceYears = request.RequestedExperienceYears,
+            Status = request.Status,
+            RejectionReason = request.RejectionReason,
+            RequestedAt = request.RequestedAt,
+            ReviewedAt = request.ReviewedAt,
+            ReviewedByAdminId = request.ReviewedByAdminId
         };
     }
 

@@ -5,6 +5,7 @@ using LockedIn.BusinessObject.Common;
 using LockedIn.BusinessObject.DTOs.Admin;
 using LockedIn.BusinessObject.DTOs.Disputes;
 using LockedIn.BusinessObject.DTOs.PtProfiles;
+using LockedIn.BusinessObject.DTOs.PtProfile;
 
 namespace LockedIn.BusinessObject.Interfaces;
 
@@ -29,4 +30,8 @@ public interface IAdminService
     Task<ApiResponse<AdminSettlementResponse>> ApproveSettlementAsync(Guid settlementId);
     Task<ApiResponse<AdminSettlementResponse>> MarkSettlementAsSettledAsync(Guid settlementId);
     Task<ApiResponse<IReadOnlyList<AuditLogResponse>>> GetAuditLogsAsync();
+    Task<ApiResponse<IReadOnlyList<ProfileEditRequestResponse>>> GetPtProfileEditRequestsAsync(int? status = null);
+    Task<ApiResponse<ProfileEditRequestResponse>> GetPtProfileEditRequestByIdAsync(Guid requestId);
+    Task<ApiResponse<ProfileEditRequestResponse>> ApprovePtProfileEditRequestAsync(Guid requestId);
+    Task<ApiResponse<ProfileEditRequestResponse>> RejectPtProfileEditRequestAsync(Guid requestId, RejectProfileEditRequest request);
 }

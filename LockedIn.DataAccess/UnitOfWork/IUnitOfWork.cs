@@ -10,6 +10,7 @@ public interface IUnitOfWork : IDisposable
     IRefreshTokenRepository RefreshTokens { get; }
     ICustomerProfileRepository CustomerProfiles { get; }
     IPtProfileRepository PtProfiles { get; }
+    IPtProfileEditRequestRepository PtProfileEditRequests { get; }
     IPtDocumentRepository PtDocuments { get; }
     IPackageRepository Packages { get; }
     IBookingRepository Bookings { get; }

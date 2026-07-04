@@ -43,6 +43,8 @@ public partial class LockedInDbContext : DbContext
 
     public virtual DbSet<PtProfile> PtProfiles { get; set; }
 
+    public virtual DbSet<PtProfileEditRequest> PtProfileEditRequests { get; set; }
+
     public virtual DbSet<RefreshToken> RefreshTokens { get; set; }
 
     public virtual DbSet<Review> Reviews { get; set; }
@@ -662,6 +664,56 @@ public partial class LockedInDbContext : DbContext
                 .HasForeignKey<PtProfile>(d => d.UserId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("fk_pt_profiles_user_id");
+        });
+
+        modelBuilder.Entity<PtProfileEditRequest>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("pk_pt_profile_edit_requests");
+            entity.ToTable("pt_profile_edit_requests");
+            
+            entity.HasIndex(e => e.PtProfileId, "ix_pt_profile_edit_requests_pt_profile_id");
+            entity.HasIndex(e => e.Status, "ix_pt_profile_edit_requests_status");
+            entity.HasIndex(e => e.PtProfileId, "ux_pt_profile_edit_requests_one_pending")
+                .IsUnique()
+                .HasFilter("([status]=(1))");
+
+            entity.Property(e => e.Id)
+                .HasDefaultValueSql("(newid())")
+                .HasColumnName("id");
+            entity.Property(e => e.PtProfileId).HasColumnName("pt_profile_id");
+            
+            entity.Property(e => e.CurrentBio).HasColumnName("current_bio");
+            entity.Property(e => e.CurrentSpecialization).HasColumnName("current_specialization");
+            entity.Property(e => e.CurrentExperienceYears).HasColumnName("current_experience_years");
+            
+            entity.Property(e => e.RequestedBio).HasColumnName("requested_bio");
+            entity.Property(e => e.RequestedSpecialization).HasColumnName("requested_specialization");
+            entity.Property(e => e.RequestedExperienceYears).HasColumnName("requested_experience_years");
+            
+            entity.Property(e => e.Status)
+                .HasDefaultValue(1)
+                .HasColumnName("status");
+            
+            entity.Property(e => e.RejectionReason).HasColumnName("rejection_reason");
+            entity.Property(e => e.RequestedAt)
+                .HasDefaultValueSql("(sysutcdatetime())")
+                .HasColumnName("requested_at");
+            entity.Property(e => e.ReviewedAt).HasColumnName("reviewed_at");
+            entity.Property(e => e.ReviewedByAdminId).HasColumnName("reviewed_by_admin_id");
+            
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("(sysutcdatetime())")
+                .HasColumnName("created_at");
+            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
+
+            entity.HasOne(d => d.PtProfile).WithMany()
+                .HasForeignKey(d => d.PtProfileId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("fk_pt_profile_edit_requests_pt_profile_id");
+
+            entity.HasOne(d => d.ReviewedByAdmin).WithMany()
+                .HasForeignKey(d => d.ReviewedByAdminId)
+                .HasConstraintName("fk_pt_profile_edit_requests_admin_id");
         });
 
         modelBuilder.Entity<RefreshToken>(entity =>

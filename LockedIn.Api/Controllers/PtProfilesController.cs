@@ -60,4 +60,18 @@ public class PtProfilesController : ControllerBase
         var result = await _service.SubmitVerificationAsync();
         return Ok(result);
     }
+
+    [HttpPost("me/profile-edit-requests")]
+    public async Task<IActionResult> SubmitProfileEditRequestAsync([FromBody] LockedIn.BusinessObject.DTOs.PtProfile.SubmitProfileEditRequest request)
+    {
+        var result = await _service.SubmitProfileEditRequestAsync(request);
+        return Ok(result);
+    }
+
+    [HttpGet("me/profile-edit-requests")]
+    public async Task<IActionResult> GetMyProfileEditRequestsAsync()
+    {
+        var result = await _service.GetMyProfileEditRequestsAsync();
+        return Ok(result);
+    }
 }
