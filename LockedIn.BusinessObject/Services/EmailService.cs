@@ -94,7 +94,13 @@ namespace LockedIn.BusinessObject.Services
                 token = Microsoft.AspNetCore.WebUtilities.Base64UrlTextEncoder.Encode(bytes);
             }
 
-            var verificationLink = $"https://localhost:7072/api/auth/verify-email?userId={userId}&token={token}";
+            var frontendBaseUrl = _configuration["Frontend:BaseUrl"];
+            if (string.IsNullOrWhiteSpace(frontendBaseUrl))
+            {
+                frontendBaseUrl = "http://localhost:5173";
+            }
+            frontendBaseUrl = frontendBaseUrl.TrimEnd('/');
+            var verificationLink = $"{frontendBaseUrl}/verify-email?userId={userId}&token={token}";
 
             var subject = "LockedIn - Verify Your Email Address";
             var htmlBody = $@"
