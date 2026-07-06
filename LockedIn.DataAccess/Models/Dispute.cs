@@ -29,6 +29,12 @@ public partial class Dispute
 
     public DateTime? UpdatedAt { get; set; }
 
+    public int OriginalBookingStatus { get; set; }
+
+    public int? OriginalSettlementStatus { get; set; }
+
+    public DateTime? WithdrawnAt { get; set; }
+
     public virtual Booking Booking { get; set; } = null!;
 
     public virtual CustomerProfile Customer { get; set; } = null!;

@@ -14,4 +14,7 @@ public class CreateDisputeRequest
     [Required(AllowEmptyStrings = false, ErrorMessage = "Description is required.")]
     [StringLength(2000, ErrorMessage = "Description cannot exceed 2000 characters.")]
     public string Description { get; set; } = null!;
+
+    [Required(ErrorMessage = "At least one evidence is required.")]
+    public System.Collections.Generic.List<UploadDisputeEvidenceRequest> Evidences { get; set; } = new();
 }

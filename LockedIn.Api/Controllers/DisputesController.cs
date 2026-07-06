@@ -46,4 +46,11 @@ public class DisputesController : ControllerBase
         var result = await _service.UploadEvidenceAsync(disputeId, request);
         return Ok(result);
     }
+
+    [HttpPost("{disputeId}/withdraw")]
+    public async Task<IActionResult> WithdrawDisputeAsync(Guid disputeId)
+    {
+        var result = await _service.WithdrawDisputeAsync(disputeId);
+        return Ok(result);
+    }
 }

@@ -5,5 +5,6 @@ public enum DisputeStatus
     Open = 1,
     UnderReview = 2,
     ResolvedRefundCustomer = 3,
-    ResolvedReleaseToPT = 4
+    ResolvedReleaseToPT = 4,
+    Withdrawn = 5
 }

@@ -290,6 +290,10 @@ public partial class LockedInDbContext : DbContext
                 .IsUnique()
                 .HasFilter("([status] IN ((1), (2), (3)))");
 
+            entity.HasIndex(e => e.BookingId, "ux_disputes_one_active_dispute_per_booking")
+                .IsUnique()
+                .HasFilter("([status] IN ((1), (2)))");
+
             entity.Property(e => e.Id)
                 .HasDefaultValueSql("(newid())")
                 .HasColumnName("id");
@@ -310,6 +314,9 @@ public partial class LockedInDbContext : DbContext
                 .HasDefaultValue(1)
                 .HasColumnName("status");
             entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
+            entity.Property(e => e.OriginalBookingStatus).HasColumnName("original_booking_status");
+            entity.Property(e => e.OriginalSettlementStatus).HasColumnName("original_settlement_status");
+            entity.Property(e => e.WithdrawnAt).HasColumnName("withdrawn_at");
 
             entity.HasOne(d => d.Booking).WithOne(p => p.Dispute)
                 .HasForeignKey<Dispute>(d => d.BookingId)

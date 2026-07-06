@@ -12,4 +12,5 @@ public interface IDisputeService
     Task<ApiResponse<IReadOnlyList<DisputeResponse>>> GetMyDisputesAsync();
     Task<ApiResponse<DisputeResponse>> GetDisputeByIdAsync(Guid disputeId);
     Task<ApiResponse<DisputeEvidenceResponse>> UploadEvidenceAsync(Guid disputeId, UploadDisputeEvidenceRequest request);
+    Task<ApiResponse<DisputeResponse>> WithdrawDisputeAsync(Guid disputeId);
 }

@@ -565,6 +565,11 @@ public class AdminService : IAdminService
             return ApiResponse<AdminDisputeResponse>.Fail("Dispute not found.");
         }
 
+        if (dispute.Status == (int)DisputeStatus.Withdrawn)
+        {
+            return ApiResponse<AdminDisputeResponse>.Fail("Dispute has been withdrawn and cannot be processed.");
+        }
+
         if (dispute.Status != (int)DisputeStatus.Open)
         {
             return ApiResponse<AdminDisputeResponse>.Fail("Dispute must be Open to be marked as Under Review.");
@@ -603,6 +608,11 @@ public class AdminService : IAdminService
         if (dispute == null)
         {
             return ApiResponse<AdminDisputeResponse>.Fail("Dispute not found.");
+        }
+
+        if (dispute.Status == (int)DisputeStatus.Withdrawn)
+        {
+            return ApiResponse<AdminDisputeResponse>.Fail("Dispute has been withdrawn and cannot be processed.");
         }
 
         if (dispute.Status != (int)DisputeStatus.Open && dispute.Status != (int)DisputeStatus.UnderReview)
@@ -727,6 +737,11 @@ public class AdminService : IAdminService
         if (dispute == null)
         {
             return ApiResponse<AdminDisputeResponse>.Fail("Dispute not found.");
+        }
+
+        if (dispute.Status == (int)DisputeStatus.Withdrawn)
+        {
+            return ApiResponse<AdminDisputeResponse>.Fail("Dispute has been withdrawn and cannot be processed.");
         }
 
         if (dispute.Status != (int)DisputeStatus.Open && dispute.Status != (int)DisputeStatus.UnderReview)

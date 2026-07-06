@@ -15,4 +15,7 @@ public class DisputeResponse
     public Guid? ResolvedByAdminId { get; set; }
     public DateTime? ResolvedAt { get; set; }
     public DateTime CreatedAt { get; set; }
+    public int OriginalBookingStatus { get; set; }
+    public int? OriginalSettlementStatus { get; set; }
+    public DateTime? WithdrawnAt { get; set; }
 }
