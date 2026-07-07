@@ -57,6 +57,16 @@ public partial class LockedInDbContext : DbContext
 
     public virtual DbSet<WorkspaceSession> WorkspaceSessions { get; set; }
 
+    public virtual DbSet<AddonProduct> AddonProducts { get; set; }
+    public virtual DbSet<AddonProductPrice> AddonProductPrices { get; set; }
+    public virtual DbSet<AddonOrder> AddonOrders { get; set; }
+    public virtual DbSet<AddonOrderItem> AddonOrderItems { get; set; }
+    public virtual DbSet<AddonPaymentAttempt> AddonPaymentAttempts { get; set; }
+    public virtual DbSet<AddonWebhookLog> AddonWebhookLogs { get; set; }
+    public virtual DbSet<AddonEntitlement> AddonEntitlements { get; set; }
+    public virtual DbSet<AddonQuotaReservation> AddonQuotaReservations { get; set; }
+    public virtual DbSet<MealPlanQuotaCounter> MealPlanQuotaCounters { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<AiUsageLog>(entity =>
@@ -961,6 +971,225 @@ public partial class LockedInDbContext : DbContext
                 .HasForeignKey(d => d.WorkspaceId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("fk_workspace_sessions_workspace_id");
+        });
+
+        modelBuilder.Entity<AddonProduct>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("pk_addon_products");
+            entity.ToTable("addon_products");
+            entity.HasIndex(e => e.Code, "ux_addon_products_code").IsUnique();
+            entity.HasIndex(e => e.IsActive, "ix_addon_products_is_active");
+            entity.Property(e => e.Id).HasDefaultValueSql("(newid())").HasColumnName("id");
+            entity.Property(e => e.Code).HasMaxLength(50).HasColumnName("code");
+            entity.Property(e => e.Name).HasMaxLength(200).HasColumnName("name");
+            entity.Property(e => e.Description).HasColumnName("description");
+            entity.Property(e => e.ProductType).HasColumnName("product_type");
+            entity.Property(e => e.GrantQuantity).HasColumnName("grant_quantity");
+            entity.Property(e => e.DurationDays).HasColumnName("duration_days");
+            entity.Property(e => e.IsActive).HasColumnName("is_active");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("(sysutcdatetime())").HasColumnName("created_at");
+            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
+        });
+
+        modelBuilder.Entity<AddonProductPrice>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("pk_addon_product_prices");
+            entity.ToTable("addon_product_prices");
+            entity.HasIndex(e => e.ProductId, "ux_addon_product_prices_one_active_per_product")
+                  .IsUnique().HasFilter("([is_active]=(1))");
+            entity.HasIndex(e => e.ProductId, "ix_addon_product_prices_product_id");
+            entity.Property(e => e.Id).HasDefaultValueSql("(newid())").HasColumnName("id");
+            entity.Property(e => e.ProductId).HasColumnName("product_id");
+            entity.Property(e => e.UnitAmount).HasColumnType("decimal(12, 2)").HasColumnName("unit_amount");
+            entity.Property(e => e.Currency).HasMaxLength(10).HasColumnName("currency");
+            entity.Property(e => e.IsActive).HasColumnName("is_active");
+            entity.Property(e => e.CreatedByAdminId).HasColumnName("created_by_admin_id");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("(sysutcdatetime())").HasColumnName("created_at");
+            entity.Property(e => e.DeactivatedAt).HasColumnName("deactivated_at");
+
+            entity.HasOne(d => d.Product).WithMany(p => p.AddonProductPrices)
+                  .HasForeignKey(d => d.ProductId).OnDelete(DeleteBehavior.ClientSetNull)
+                  .HasConstraintName("fk_addon_product_prices_product_id");
+            entity.HasOne(d => d.CreatedByAdmin).WithMany(p => p.AddonProductPrices)
+                  .HasForeignKey(d => d.CreatedByAdminId).OnDelete(DeleteBehavior.ClientSetNull)
+                  .HasConstraintName("fk_addon_product_prices_created_by_admin_id");
+        });
+
+        modelBuilder.Entity<AddonOrder>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("pk_addon_orders");
+            entity.ToTable("addon_orders");
+            entity.HasIndex(e => e.PtProfileId, "ix_addon_orders_pt_profile_id");
+            entity.HasIndex(e => e.Status, "ix_addon_orders_status");
+            entity.Property(e => e.Id).HasDefaultValueSql("(newid())").HasColumnName("id");
+            entity.Property(e => e.PtProfileId).HasColumnName("pt_profile_id");
+            entity.Property(e => e.Status).HasColumnName("status");
+            entity.Property(e => e.TotalAmount).HasColumnType("decimal(12, 2)").HasColumnName("total_amount");
+            entity.Property(e => e.Currency).HasMaxLength(10).HasColumnName("currency");
+            entity.Property(e => e.PaidAt).HasColumnName("paid_at");
+            entity.Property(e => e.CancelledAt).HasColumnName("cancelled_at");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("(sysutcdatetime())").HasColumnName("created_at");
+            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
+
+            entity.HasOne(d => d.PtProfile).WithMany(p => p.AddonOrders)
+                  .HasForeignKey(d => d.PtProfileId).OnDelete(DeleteBehavior.ClientSetNull)
+                  .HasConstraintName("fk_addon_orders_pt_profile_id");
+        });
+
+        modelBuilder.Entity<AddonOrderItem>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("pk_addon_order_items");
+            entity.ToTable("addon_order_items");
+            entity.HasIndex(e => e.OrderId, "ix_addon_order_items_order_id");
+            entity.HasIndex(e => e.ProductId, "ix_addon_order_items_product_id");
+            entity.Property(e => e.Id).HasDefaultValueSql("(newid())").HasColumnName("id");
+            entity.Property(e => e.OrderId).HasColumnName("order_id");
+            entity.Property(e => e.ProductId).HasColumnName("product_id");
+            entity.Property(e => e.PriceId).HasColumnName("price_id");
+            entity.Property(e => e.ProductCode).HasMaxLength(50).HasColumnName("product_code");
+            entity.Property(e => e.ProductName).HasMaxLength(200).HasColumnName("product_name");
+            entity.Property(e => e.UnitAmount).HasColumnType("decimal(12, 2)").HasColumnName("unit_amount");
+            entity.Property(e => e.Currency).HasMaxLength(10).HasColumnName("currency");
+            entity.Property(e => e.Quantity).HasColumnName("quantity");
+            entity.Property(e => e.TotalAmount).HasColumnType("decimal(12, 2)").HasColumnName("total_amount");
+            entity.Property(e => e.FulfillmentTypeSnapshot).HasMaxLength(50).HasColumnName("fulfillment_type_snapshot");
+            entity.Property(e => e.GrantQuantitySnapshot).HasColumnName("grant_quantity_snapshot");
+            entity.Property(e => e.DurationDaysSnapshot).HasColumnName("duration_days_snapshot");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("(sysutcdatetime())").HasColumnName("created_at");
+
+            entity.HasOne(d => d.Order).WithMany(p => p.AddonOrderItems)
+                  .HasForeignKey(d => d.OrderId).OnDelete(DeleteBehavior.Cascade)
+                  .HasConstraintName("fk_addon_order_items_order_id");
+            entity.HasOne(d => d.Product).WithMany(p => p.AddonOrderItems)
+                  .HasForeignKey(d => d.ProductId).OnDelete(DeleteBehavior.ClientSetNull)
+                  .HasConstraintName("fk_addon_order_items_product_id");
+            entity.HasOne(d => d.Price).WithMany(p => p.AddonOrderItems)
+                  .HasForeignKey(d => d.PriceId).OnDelete(DeleteBehavior.ClientSetNull)
+                  .HasConstraintName("fk_addon_order_items_price_id");
+        });
+
+        modelBuilder.Entity<AddonPaymentAttempt>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("pk_addon_payment_attempts");
+            entity.ToTable("addon_payment_attempts");
+            entity.HasIndex(e => e.OrderCode, "ux_addon_payment_attempts_order_code").IsUnique();
+            entity.HasIndex(e => e.OrderId, "ux_addon_payment_attempts_one_success_per_order")
+                  .IsUnique().HasFilter("([status]=(2))");
+            entity.HasIndex(e => e.OrderId, "ix_addon_payment_attempts_order_id");
+            entity.HasIndex(e => e.Status, "ix_addon_payment_attempts_status");
+            entity.Property(e => e.Id).HasDefaultValueSql("(newid())").HasColumnName("id");
+            entity.Property(e => e.OrderId).HasColumnName("order_id");
+            entity.Property(e => e.Provider).HasMaxLength(50).HasColumnName("provider");
+            entity.Property(e => e.OrderCode).HasMaxLength(100).HasColumnName("order_code");
+            entity.Property(e => e.Amount).HasColumnType("decimal(12, 2)").HasColumnName("amount");
+            entity.Property(e => e.Currency).HasMaxLength(10).HasColumnName("currency");
+            entity.Property(e => e.Status).HasColumnName("status");
+            entity.Property(e => e.CheckoutUrl).HasColumnName("checkout_url");
+            entity.Property(e => e.ProviderTransactionId).HasMaxLength(255).HasColumnName("provider_transaction_id");
+            entity.Property(e => e.PaidAt).HasColumnName("paid_at");
+            entity.Property(e => e.ExpiredAt).HasColumnName("expired_at");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("(sysutcdatetime())").HasColumnName("created_at");
+
+            entity.HasOne(d => d.Order).WithMany(p => p.AddonPaymentAttempts)
+                  .HasForeignKey(d => d.OrderId).OnDelete(DeleteBehavior.ClientSetNull)
+                  .HasConstraintName("fk_addon_payment_attempts_order_id");
+        });
+
+        modelBuilder.Entity<AddonWebhookLog>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("pk_addon_webhook_logs");
+            entity.ToTable("addon_webhook_logs");
+            entity.HasIndex(e => e.EventId, "ix_addon_webhook_logs_event_id");
+            entity.HasIndex(e => e.AttemptId, "ix_addon_webhook_logs_attempt_id");
+            entity.HasIndex(e => e.ReceivedAt, "ix_addon_webhook_logs_received_at");
+            entity.Property(e => e.Id).HasDefaultValueSql("(newid())").HasColumnName("id");
+            entity.Property(e => e.AttemptId).HasColumnName("attempt_id");
+            entity.Property(e => e.Provider).HasMaxLength(50).HasColumnName("provider");
+            entity.Property(e => e.EventType).HasMaxLength(100).HasColumnName("event_type");
+            entity.Property(e => e.EventId).HasMaxLength(255).HasColumnName("event_id");
+            entity.Property(e => e.RawPayload).HasColumnName("raw_payload");
+            entity.Property(e => e.IsValidSignature).HasColumnName("is_valid_signature");
+            entity.Property(e => e.ProcessedAt).HasColumnName("processed_at");
+            entity.Property(e => e.ReceivedAt).HasDefaultValueSql("(sysutcdatetime())").HasColumnName("received_at");
+
+            entity.HasOne(d => d.Attempt).WithMany(p => p.AddonWebhookLogs)
+                  .HasForeignKey(d => d.AttemptId).OnDelete(DeleteBehavior.ClientSetNull)
+                  .HasConstraintName("fk_addon_webhook_logs_attempt_id");
+        });
+
+        modelBuilder.Entity<AddonEntitlement>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("pk_addon_entitlements");
+            entity.ToTable("addon_entitlements", t => t.HasCheckConstraint("ck_addon_entitlements_quantity", "quantity_remaining >= 0"));
+            entity.HasIndex(e => new { e.PtProfileId, e.ProductCode, e.Status }, "ix_addon_entitlements_consumption");
+            entity.Property(e => e.Id).HasDefaultValueSql("(newid())").HasColumnName("id");
+            entity.Property(e => e.PtProfileId).HasColumnName("pt_profile_id");
+            entity.Property(e => e.OrderId).HasColumnName("order_id");
+            entity.Property(e => e.OrderItemId).HasColumnName("order_item_id");
+            entity.Property(e => e.ProductCode).HasMaxLength(50).HasColumnName("product_code");
+            entity.Property(e => e.FulfillmentType).HasMaxLength(50).HasColumnName("fulfillment_type");
+            entity.Property(e => e.QuantityGranted).HasColumnName("quantity_granted");
+            entity.Property(e => e.QuantityRemaining).HasColumnName("quantity_remaining");
+            entity.Property(e => e.Status).HasColumnName("status");
+            entity.Property(e => e.ActivatedAt).HasColumnName("activated_at");
+            entity.Property(e => e.ExpiresAt).HasColumnName("expires_at");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("(sysutcdatetime())").HasColumnName("created_at");
+            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
+
+            entity.HasOne(d => d.PtProfile).WithMany(p => p.AddonEntitlements)
+                  .HasForeignKey(d => d.PtProfileId).OnDelete(DeleteBehavior.ClientSetNull)
+                  .HasConstraintName("fk_addon_entitlements_pt_profile_id");
+            entity.HasOne(d => d.Order).WithMany(p => p.AddonEntitlements)
+                  .HasForeignKey(d => d.OrderId).OnDelete(DeleteBehavior.ClientSetNull)
+                  .HasConstraintName("fk_addon_entitlements_order_id");
+            entity.HasOne(d => d.OrderItem).WithMany(p => p.AddonEntitlements)
+                  .HasForeignKey(d => d.OrderItemId).OnDelete(DeleteBehavior.ClientSetNull)
+                  .HasConstraintName("fk_addon_entitlements_order_item_id");
+        });
+
+        modelBuilder.Entity<AddonQuotaReservation>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("pk_addon_quota_reservations");
+            entity.ToTable("addon_quota_reservations");
+            entity.HasIndex(e => new { e.PtProfileId, e.Status, e.ExpiresAt }, "ix_addon_quota_reservations_cleanup");
+            entity.HasIndex(e => e.GenerationRequestId, "ix_addon_quota_reservations_generation_request_id").IsUnique();
+            entity.Property(e => e.Id).HasDefaultValueSql("(newid())").HasColumnName("id");
+            entity.Property(e => e.PtProfileId).HasColumnName("pt_profile_id");
+            entity.Property(e => e.ReservationType).HasMaxLength(50).HasColumnName("reservation_type");
+            entity.Property(e => e.EntitlementId).HasColumnName("entitlement_id");
+            entity.Property(e => e.QuotaDate).HasColumnName("quota_date");
+            entity.Property(e => e.GenerationRequestId).HasColumnName("generation_request_id");
+            entity.Property(e => e.Status).HasColumnName("status");
+            entity.Property(e => e.ReservedAt).HasDefaultValueSql("(sysutcdatetime())").HasColumnName("reserved_at");
+            entity.Property(e => e.ExpiresAt).HasColumnName("expires_at");
+            entity.Property(e => e.FinalizedAt).HasColumnName("finalized_at");
+            entity.Property(e => e.ReleasedAt).HasColumnName("released_at");
+
+            entity.HasOne(d => d.PtProfile).WithMany(p => p.AddonQuotaReservations)
+                  .HasForeignKey(d => d.PtProfileId).OnDelete(DeleteBehavior.ClientSetNull)
+                  .HasConstraintName("fk_addon_quota_reservations_pt_profile_id");
+            entity.HasOne(d => d.Entitlement).WithMany(p => p.AddonQuotaReservations)
+                  .HasForeignKey(d => d.EntitlementId).OnDelete(DeleteBehavior.ClientSetNull)
+                  .HasConstraintName("fk_addon_quota_reservations_entitlement_id");
+        });
+
+        modelBuilder.Entity<MealPlanQuotaCounter>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("pk_meal_plan_quota_counters");
+            entity.ToTable("meal_plan_quota_counters", t => t.HasCheckConstraint("ck_meal_plan_quota_counters_counts", "consumed_count >= 0 AND reserved_count >= 0 AND daily_limit > 0 AND consumed_count + reserved_count <= daily_limit"));
+            entity.HasIndex(e => new { e.PtProfileId, e.QuotaDate }, "ux_meal_plan_quota_counters_pt_date").IsUnique();
+            entity.Property(e => e.Id).HasDefaultValueSql("(newid())").HasColumnName("id");
+            entity.Property(e => e.PtProfileId).HasColumnName("pt_profile_id");
+            entity.Property(e => e.QuotaDate).HasColumnName("quota_date");
+            entity.Property(e => e.ConsumedCount).HasDefaultValue(0).HasColumnName("consumed_count");
+            entity.Property(e => e.ReservedCount).HasDefaultValue(0).HasColumnName("reserved_count");
+            entity.Property(e => e.DailyLimit).HasColumnName("daily_limit");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("(sysutcdatetime())").HasColumnName("created_at");
+            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
+
+            entity.HasOne(d => d.PtProfile).WithMany(p => p.MealPlanQuotaCounters)
+                  .HasForeignKey(d => d.PtProfileId).OnDelete(DeleteBehavior.ClientSetNull)
+                  .HasConstraintName("fk_meal_plan_quota_counters_pt_profile_id");
         });
 
         OnModelCreatingPartial(modelBuilder);

@@ -59,6 +59,8 @@ namespace LockedIn.Api
             builder.Services.AddScoped<IPackageService, PackageService>();
             builder.Services.AddScoped<IBookingService, BookingService>();
             builder.Services.AddScoped<IPaymentService, PaymentService>();
+            builder.Services.AddScoped<IAddonOrderService, AddonOrderService>();
+            builder.Services.AddScoped<IAddonPaymentWebhookService, AddonPaymentWebhookService>();
             builder.Services.AddScoped<IWorkspaceService, WorkspaceService>();
             builder.Services.AddScoped<IConversationService, ConversationService>();
             builder.Services.AddScoped<IFirebaseChatService, FirebaseChatService>();
@@ -71,6 +73,8 @@ namespace LockedIn.Api
             builder.Services.AddScoped<INotificationService, NotificationService>();
             builder.Services.AddScoped<IAdminService, AdminService>();
             builder.Services.AddScoped<ICloudinaryService, CloudinaryService>();
+            
+            builder.Services.AddHostedService<BackgroundServices.QuotaCleanupBackgroundService>();
 
             // 4.5 PayOS Client
             var payOsClientId = builder.Configuration["PayOS:ClientId"]!;

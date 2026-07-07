@@ -56,4 +56,9 @@ public partial class PtProfile
     public virtual User User { get; set; } = null!;
 
     public virtual ICollection<Workspace> Workspaces { get; set; } = new List<Workspace>();
+
+    public virtual ICollection<AddonOrder> AddonOrders { get; set; } = new List<AddonOrder>();
+    public virtual ICollection<AddonEntitlement> AddonEntitlements { get; set; } = new List<AddonEntitlement>();
+    public virtual ICollection<AddonQuotaReservation> AddonQuotaReservations { get; set; } = new List<AddonQuotaReservation>();
+    public virtual ICollection<MealPlanQuotaCounter> MealPlanQuotaCounters { get; set; } = new List<MealPlanQuotaCounter>();
 }

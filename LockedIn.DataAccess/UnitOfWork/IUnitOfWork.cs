@@ -28,8 +28,19 @@ public interface IUnitOfWork : IDisposable
     IAuditLogRepository AuditLogs { get; }
     IWorkspaceSessionRepository WorkspaceSessions { get; }
 
+    IAddonProductRepository AddonProducts { get; }
+    IAddonProductPriceRepository AddonProductPrices { get; }
+    IAddonOrderRepository AddonOrders { get; }
+    IAddonOrderItemRepository AddonOrderItems { get; }
+    IAddonPaymentAttemptRepository AddonPaymentAttempts { get; }
+    IAddonWebhookLogRepository AddonWebhookLogs { get; }
+    IAddonEntitlementRepository AddonEntitlements { get; }
+    IAddonQuotaReservationRepository AddonQuotaReservations { get; }
+    IMealPlanQuotaCounterRepository MealPlanQuotaCounters { get; }
+
     Task<int> SaveChangesAsync();
     Task BeginTransactionAsync();
+    Task BeginTransactionAsync(System.Data.IsolationLevel isolationLevel);
     Task CommitTransactionAsync();
     Task RollbackTransactionAsync();
 }

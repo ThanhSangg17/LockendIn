@@ -19,19 +19,22 @@ public class PaymentService : IPaymentService
     private readonly PayOS.PayOSClient _payOSClient;
     private readonly Microsoft.Extensions.Configuration.IConfiguration _configuration;
     private readonly Microsoft.Extensions.Logging.ILogger<PaymentService> _logger;
+    private readonly IAddonPaymentWebhookService _addonPaymentWebhookService;
 
     public PaymentService(
         IUnitOfWork unitOfWork, 
         ICurrentUserService currentUserService,
         PayOS.PayOSClient payOSClient,
         Microsoft.Extensions.Configuration.IConfiguration configuration,
-        Microsoft.Extensions.Logging.ILogger<PaymentService> logger)
+        Microsoft.Extensions.Logging.ILogger<PaymentService> logger,
+        IAddonPaymentWebhookService addonPaymentWebhookService)
     {
         _unitOfWork = unitOfWork;
         _currentUserService = currentUserService;
         _payOSClient = payOSClient;
         _configuration = configuration;
         _logger = logger;
+        _addonPaymentWebhookService = addonPaymentWebhookService;
     }
 
     public async Task<ApiResponse<PaymentResponse>> CreatePaymentLinkAsync(CreatePaymentLinkRequest request)
@@ -267,6 +270,14 @@ public class PaymentService : IPaymentService
 
         if (payment == null)
         {
+            // Phase 6D: Check if this is an Add-on payment
+            var addonAttempt = await _unitOfWork.AddonPaymentAttempts.Query()
+                .FirstOrDefaultAsync(a => a.OrderCode == orderCodeStr);
+            if (addonAttempt != null)
+            {
+                return await _addonPaymentWebhookService.HandleWebhookAsync(verifiedData, request.Code, rawPayload, receivedAt);
+            }
+
             _logger.LogWarning("Payment record not found for OrderCode: {OrderCode}", orderCodeStr);
             
             try

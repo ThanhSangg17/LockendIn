@@ -4,6 +4,7 @@ using LockedIn.DataAccess.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace LockedIn.DataAccess.Migrations
 {
     [DbContext(typeof(LockedInDbContext))]
-    partial class LockedInDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260707133800_AddAddonProductDurationDays")]
+    partial class AddAddonProductDurationDays
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -487,8 +490,7 @@ namespace LockedIn.DataAccess.Migrations
 
                     b.HasIndex(new[] { "PtProfileId", "Status", "ExpiresAt" }, "ix_addon_quota_reservations_cleanup");
 
-                    b.HasIndex(new[] { "GenerationRequestId" }, "ix_addon_quota_reservations_generation_request_id")
-                        .IsUnique();
+                    b.HasIndex(new[] { "GenerationRequestId" }, "ix_addon_quota_reservations_generation_request_id");
 
                     b.ToTable("addon_quota_reservations", (string)null);
                 });

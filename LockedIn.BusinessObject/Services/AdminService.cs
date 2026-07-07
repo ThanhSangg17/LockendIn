@@ -1260,6 +1260,376 @@ public class AdminService : IAdminService
         }
     }
 
+    public async Task<ApiResponse<AddonProductResponse>> CreateAddonProductAsync(CreateAddonProductRequest request)
+    {
+        if (!_currentUserService.IsAuthenticated || _currentUserService.Role != (int)UserRole.Admin)
+        {
+            return ApiResponse<AddonProductResponse>.Fail("Only Admins can perform this action.");
+        }
+
+        if (string.IsNullOrWhiteSpace(request.Code))
+        {
+            return ApiResponse<AddonProductResponse>.Fail("Product code is required.");
+        }
+        var codeUpper = request.Code.Trim().ToUpper();
+        if (!System.Text.RegularExpressions.Regex.IsMatch(codeUpper, "^[A-Z0-9_]+$"))
+        {
+            return ApiResponse<AddonProductResponse>.Fail("Product code can only contain uppercase letters (A-Z), numbers (0-9), and underscores (_).");
+        }
+
+        if (string.IsNullOrWhiteSpace(request.Name))
+        {
+            return ApiResponse<AddonProductResponse>.Fail("Product name is required.");
+        }
+        var nameTrimmed = request.Name.Trim();
+
+        if (request.ProductType != (int)AddonProductType.Credit && request.ProductType != (int)AddonProductType.TimeBasedEntitlement)
+        {
+            return ApiResponse<AddonProductResponse>.Fail("Invalid product type.");
+        }
+
+        if (request.ProductType == (int)AddonProductType.Credit)
+        {
+            if (!request.GrantQuantity.HasValue || request.GrantQuantity.Value <= 0)
+            {
+                return ApiResponse<AddonProductResponse>.Fail("Grant quantity must be greater than 0 for credit product type.");
+            }
+            if (request.DurationDays.HasValue)
+            {
+                return ApiResponse<AddonProductResponse>.Fail("Duration days must be null for credit product type.");
+            }
+        }
+        else if (request.ProductType == (int)AddonProductType.TimeBasedEntitlement)
+        {
+            if (!request.DurationDays.HasValue || request.DurationDays.Value <= 0)
+            {
+                return ApiResponse<AddonProductResponse>.Fail("Duration days must be greater than 0 for time-based entitlement product type.");
+            }
+            if (request.GrantQuantity.HasValue)
+            {
+                return ApiResponse<AddonProductResponse>.Fail("Grant quantity must be null for time-based entitlement product type.");
+            }
+        }
+
+        var exists = await _unitOfWork.AddonProducts.Query().AnyAsync(p => p.Code == codeUpper);
+        if (exists)
+        {
+            return ApiResponse<AddonProductResponse>.Fail($"Add-on product with code '{codeUpper}' already exists.");
+        }
+
+        var product = new AddonProduct
+        {
+            Id = Guid.NewGuid(),
+            Code = codeUpper,
+            Name = nameTrimmed,
+            Description = request.Description?.Trim(),
+            ProductType = request.ProductType,
+            GrantQuantity = request.ProductType == (int)AddonProductType.Credit ? request.GrantQuantity : null,
+            DurationDays = request.ProductType == (int)AddonProductType.TimeBasedEntitlement ? request.DurationDays : null,
+            IsActive = request.IsActive,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        await _unitOfWork.AddonProducts.AddAsync(product);
+
+        try
+        {
+            var auditLog = new AuditLog
+            {
+                Id = Guid.NewGuid(),
+                ActorUserId = _currentUserService.UserId!.Value,
+                Action = "CreateAddonProduct",
+                EntityName = "AddonProduct",
+                EntityId = product.Id,
+                MetadataJson = System.Text.Json.JsonSerializer.Serialize(new { Code = product.Code, Name = product.Name }),
+                CreatedAt = DateTime.UtcNow
+            };
+            await _unitOfWork.AuditLogs.AddAsync(auditLog);
+        }
+        catch {}
+
+        await _unitOfWork.SaveChangesAsync();
+
+        var createdProduct = await _unitOfWork.AddonProducts.Query()
+            .Include(p => p.AddonProductPrices)
+            .FirstAsync(p => p.Id == product.Id);
+
+        return ApiResponse<AddonProductResponse>.Ok(MapToAddonProductResponse(createdProduct), "Add-on product created successfully.");
+    }
+
+    public async Task<ApiResponse<PagedResult<AddonProductResponse>>> GetAddonProductsAsync(PaginationRequest request, string? search = null, int? productType = null, bool? isActive = null)
+    {
+        if (!_currentUserService.IsAuthenticated || _currentUserService.Role != (int)UserRole.Admin)
+        {
+            return ApiResponse<PagedResult<AddonProductResponse>>.Fail("Only Admins can perform this action.");
+        }
+
+        var query = _unitOfWork.AddonProducts.Query()
+            .Include(p => p.AddonProductPrices)
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var lowerSearch = search.ToLower();
+            query = query.Where(p => p.Code.ToLower().Contains(lowerSearch) || p.Name.ToLower().Contains(lowerSearch) || (p.Description != null && p.Description.ToLower().Contains(lowerSearch)));
+        }
+        if (productType.HasValue)
+        {
+            query = query.Where(p => p.ProductType == productType.Value);
+        }
+        if (isActive.HasValue)
+        {
+            query = query.Where(p => p.IsActive == isActive.Value);
+        }
+
+        var totalItems = await query.CountAsync();
+        var totalPages = (int)Math.Ceiling(totalItems / (double)request.PageSize);
+
+        var products = await query
+            .OrderByDescending(p => p.CreatedAt)
+            .Skip((request.PageNumber - 1) * request.PageSize)
+            .Take(request.PageSize)
+            .ToListAsync();
+
+        var response = products.Select(MapToAddonProductResponse).ToList();
+        var pagedResult = new PagedResult<AddonProductResponse>
+        {
+            Items = response,
+            PageNumber = request.PageNumber,
+            PageSize = request.PageSize,
+            TotalItems = totalItems,
+            TotalPages = totalPages
+        };
+
+        return ApiResponse<PagedResult<AddonProductResponse>>.Ok(pagedResult, "Add-on products retrieved successfully.");
+    }
+
+    public async Task<ApiResponse<AddonProductResponse>> GetAddonProductByIdAsync(Guid productId)
+    {
+        if (!_currentUserService.IsAuthenticated || _currentUserService.Role != (int)UserRole.Admin)
+        {
+            return ApiResponse<AddonProductResponse>.Fail("Only Admins can perform this action.");
+        }
+
+        var product = await _unitOfWork.AddonProducts.Query()
+            .Include(p => p.AddonProductPrices)
+            .FirstOrDefaultAsync(p => p.Id == productId);
+
+        if (product == null)
+        {
+            return ApiResponse<AddonProductResponse>.Fail("Add-on product not found.");
+        }
+
+        return ApiResponse<AddonProductResponse>.Ok(MapToAddonProductResponse(product), "Add-on product retrieved successfully.");
+    }
+
+    public async Task<ApiResponse<AddonProductResponse>> ActivateAddonProductAsync(Guid productId)
+    {
+        if (!_currentUserService.IsAuthenticated || _currentUserService.Role != (int)UserRole.Admin)
+        {
+            return ApiResponse<AddonProductResponse>.Fail("Only Admins can perform this action.");
+        }
+
+        var product = await _unitOfWork.AddonProducts.Query()
+            .FirstOrDefaultAsync(p => p.Id == productId);
+
+        if (product == null)
+        {
+            return ApiResponse<AddonProductResponse>.Fail("Add-on product not found.");
+        }
+
+        if (product.IsActive)
+        {
+            var activeProduct = await _unitOfWork.AddonProducts.Query()
+                .Include(p => p.AddonProductPrices)
+                .FirstAsync(p => p.Id == productId);
+            return ApiResponse<AddonProductResponse>.Ok(MapToAddonProductResponse(activeProduct), "Add-on product is already active.");
+        }
+
+        product.IsActive = true;
+        product.UpdatedAt = DateTime.UtcNow;
+
+        _unitOfWork.AddonProducts.Update(product);
+
+        try
+        {
+            var auditLog = new AuditLog
+            {
+                Id = Guid.NewGuid(),
+                ActorUserId = _currentUserService.UserId!.Value,
+                Action = "ActivateAddonProduct",
+                EntityName = "AddonProduct",
+                EntityId = product.Id,
+                MetadataJson = System.Text.Json.JsonSerializer.Serialize(new { Code = product.Code, Name = product.Name }),
+                CreatedAt = DateTime.UtcNow
+            };
+            await _unitOfWork.AuditLogs.AddAsync(auditLog);
+        }
+        catch {}
+
+        await _unitOfWork.SaveChangesAsync();
+
+        var updatedProduct = await _unitOfWork.AddonProducts.Query()
+            .Include(p => p.AddonProductPrices)
+            .FirstAsync(p => p.Id == productId);
+
+        return ApiResponse<AddonProductResponse>.Ok(MapToAddonProductResponse(updatedProduct), "Add-on product activated successfully.");
+    }
+
+    public async Task<ApiResponse<AddonProductResponse>> DeactivateAddonProductAsync(Guid productId)
+    {
+        if (!_currentUserService.IsAuthenticated || _currentUserService.Role != (int)UserRole.Admin)
+        {
+            return ApiResponse<AddonProductResponse>.Fail("Only Admins can perform this action.");
+        }
+
+        var product = await _unitOfWork.AddonProducts.Query()
+            .FirstOrDefaultAsync(p => p.Id == productId);
+
+        if (product == null)
+        {
+            return ApiResponse<AddonProductResponse>.Fail("Add-on product not found.");
+        }
+
+        if (!product.IsActive)
+        {
+            var inactiveProduct = await _unitOfWork.AddonProducts.Query()
+                .Include(p => p.AddonProductPrices)
+                .FirstAsync(p => p.Id == productId);
+            return ApiResponse<AddonProductResponse>.Ok(MapToAddonProductResponse(inactiveProduct), "Add-on product is already inactive.");
+        }
+
+        product.IsActive = false;
+        product.UpdatedAt = DateTime.UtcNow;
+
+        _unitOfWork.AddonProducts.Update(product);
+
+        try
+        {
+            var auditLog = new AuditLog
+            {
+                Id = Guid.NewGuid(),
+                ActorUserId = _currentUserService.UserId!.Value,
+                Action = "DeactivateAddonProduct",
+                EntityName = "AddonProduct",
+                EntityId = product.Id,
+                MetadataJson = System.Text.Json.JsonSerializer.Serialize(new { Code = product.Code, Name = product.Name }),
+                CreatedAt = DateTime.UtcNow
+            };
+            await _unitOfWork.AuditLogs.AddAsync(auditLog);
+        }
+        catch {}
+
+        await _unitOfWork.SaveChangesAsync();
+
+        var updatedProduct = await _unitOfWork.AddonProducts.Query()
+            .Include(p => p.AddonProductPrices)
+            .FirstAsync(p => p.Id == productId);
+
+        return ApiResponse<AddonProductResponse>.Ok(MapToAddonProductResponse(updatedProduct), "Add-on product deactivated successfully.");
+    }
+
+    public async Task<ApiResponse<AddonProductPriceResponse>> CreateAddonProductPriceAsync(Guid productId, CreateAddonProductPriceRequest request)
+    {
+        if (!_currentUserService.IsAuthenticated || _currentUserService.Role != (int)UserRole.Admin)
+        {
+            return ApiResponse<AddonProductPriceResponse>.Fail("Only Admins can perform this action.");
+        }
+
+        var product = await _unitOfWork.AddonProducts.Query().FirstOrDefaultAsync(p => p.Id == productId);
+        if (product == null)
+        {
+            return ApiResponse<AddonProductPriceResponse>.Fail("Add-on product not found.");
+        }
+
+        if (request.UnitAmount < 0)
+        {
+            return ApiResponse<AddonProductPriceResponse>.Fail("Price unit amount cannot be negative.");
+        }
+        if (string.IsNullOrWhiteSpace(request.Currency))
+        {
+            return ApiResponse<AddonProductPriceResponse>.Fail("Currency is required.");
+        }
+
+        var currentAdminId = _currentUserService.UserId!.Value;
+
+        await _unitOfWork.BeginTransactionAsync();
+        try
+        {
+            var activePrices = await _unitOfWork.AddonProductPrices.Query()
+                .Where(p => p.ProductId == productId && p.IsActive)
+                .ToListAsync();
+            foreach (var ap in activePrices)
+            {
+                ap.IsActive = false;
+                ap.DeactivatedAt = DateTime.UtcNow;
+                _unitOfWork.AddonProductPrices.Update(ap);
+            }
+
+            var newPrice = new AddonProductPrice
+            {
+                Id = Guid.NewGuid(),
+                ProductId = productId,
+                UnitAmount = request.UnitAmount,
+                Currency = request.Currency.Trim().ToUpper(),
+                IsActive = true,
+                CreatedByAdminId = currentAdminId,
+                CreatedAt = DateTime.UtcNow,
+                DeactivatedAt = null
+            };
+
+            await _unitOfWork.AddonProductPrices.AddAsync(newPrice);
+
+            try
+            {
+                var auditLog = new AuditLog
+                {
+                    Id = Guid.NewGuid(),
+                    ActorUserId = currentAdminId,
+                    Action = "CreateAddonProductPrice",
+                    EntityName = "AddonProductPrice",
+                    EntityId = newPrice.Id,
+                    MetadataJson = System.Text.Json.JsonSerializer.Serialize(new { ProductId = productId, UnitAmount = newPrice.UnitAmount, Currency = newPrice.Currency }),
+                    CreatedAt = DateTime.UtcNow
+                };
+                await _unitOfWork.AuditLogs.AddAsync(auditLog);
+            }
+            catch {}
+
+            await _unitOfWork.SaveChangesAsync();
+            await _unitOfWork.CommitTransactionAsync();
+
+            return ApiResponse<AddonProductPriceResponse>.Ok(MapToAddonProductPriceResponse(newPrice), "Add-on product price created successfully.");
+        }
+        catch (Exception ex)
+        {
+            await _unitOfWork.RollbackTransactionAsync();
+            return ApiResponse<AddonProductPriceResponse>.Fail($"Failed to create price: {ex.Message}");
+        }
+    }
+
+    public async Task<ApiResponse<IReadOnlyList<AddonProductPriceResponse>>> GetAddonProductPricesAsync(Guid productId)
+    {
+        if (!_currentUserService.IsAuthenticated || _currentUserService.Role != (int)UserRole.Admin)
+        {
+            return ApiResponse<IReadOnlyList<AddonProductPriceResponse>>.Fail("Only Admins can perform this action.");
+        }
+
+        var productExists = await _unitOfWork.AddonProducts.Query().AnyAsync(p => p.Id == productId);
+        if (!productExists)
+        {
+            return ApiResponse<IReadOnlyList<AddonProductPriceResponse>>.Fail("Add-on product not found.");
+        }
+
+        var prices = await _unitOfWork.AddonProductPrices.Query()
+            .Where(p => p.ProductId == productId)
+            .OrderByDescending(p => p.CreatedAt)
+            .ToListAsync();
+
+        var response = prices.Select(MapToAddonProductPriceResponse).ToList();
+        return ApiResponse<IReadOnlyList<AddonProductPriceResponse>>.Ok(response, "Add-on product prices retrieved successfully.");
+    }
+
     #region Helper Methods
 
     private AdminSettlementResponse MapToAdminSettlementResponse(Settlement settlement)
@@ -1294,6 +1664,41 @@ public class AdminService : IAdminService
             RequestedAt = request.RequestedAt,
             ReviewedAt = request.ReviewedAt,
             ReviewedByAdminId = request.ReviewedByAdminId
+        };
+    }
+
+    private AddonProductResponse MapToAddonProductResponse(AddonProduct product)
+    {
+        return new AddonProductResponse
+        {
+            Id = product.Id,
+            Code = product.Code,
+            Name = product.Name,
+            Description = product.Description,
+            ProductType = product.ProductType,
+            GrantQuantity = product.GrantQuantity,
+            DurationDays = product.DurationDays,
+            IsActive = product.IsActive,
+            CreatedAt = product.CreatedAt,
+            UpdatedAt = product.UpdatedAt,
+            Prices = product.AddonProductPrices != null 
+                ? product.AddonProductPrices.Select(MapToAddonProductPriceResponse).ToList()
+                : new List<AddonProductPriceResponse>()
+        };
+    }
+
+    private AddonProductPriceResponse MapToAddonProductPriceResponse(AddonProductPrice price)
+    {
+        return new AddonProductPriceResponse
+        {
+            Id = price.Id,
+            ProductId = price.ProductId,
+            UnitAmount = price.UnitAmount,
+            Currency = price.Currency,
+            IsActive = price.IsActive,
+            CreatedByAdminId = price.CreatedByAdminId,
+            CreatedAt = price.CreatedAt,
+            DeactivatedAt = price.DeactivatedAt
         };
     }
 

@@ -60,4 +60,11 @@ public class MealPlansController : ControllerBase
         var result = await _service.DeleteMealPlanAsync(mealPlanId);
         return Ok(result);
     }
+
+    [HttpGet("quota")]
+    public async Task<IActionResult> GetQuotaStatusAsync()
+    {
+        var result = await _service.GetQuotaStatusAsync();
+        return Ok(result);
+    }
 }

@@ -14,4 +14,5 @@ public interface IMealPlanService
     Task<ApiResponse<MealPlanResponse>> GetMealPlanByIdAsync(Guid mealPlanId);
     Task<ApiResponse<MealPlanResponse>> ActivateMealPlanAsync(Guid mealPlanId);
     Task<ApiResponse<string>> DeleteMealPlanAsync(Guid mealPlanId);
+    Task<ApiResponse<MealPlanQuotaResponse>> GetQuotaStatusAsync();
 }

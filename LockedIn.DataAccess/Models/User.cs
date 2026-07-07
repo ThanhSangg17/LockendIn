@@ -58,4 +58,6 @@ public partial class User
     public virtual PtProfile? PtProfileUser { get; set; }
 
     public virtual ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
+
+    public virtual ICollection<AddonProductPrice> AddonProductPrices { get; set; } = new List<AddonProductPrice>();
 }

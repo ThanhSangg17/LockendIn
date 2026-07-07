@@ -4,6 +4,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using LockedIn.BusinessObject.Interfaces;
 using LockedIn.BusinessObject.DTOs.Disputes;
+using LockedIn.BusinessObject.DTOs.Admin;
+using LockedIn.BusinessObject.Common;
 
 namespace LockedIn.Api.Controllers;
 
@@ -177,6 +179,59 @@ public class AdminController : ControllerBase
     public async Task<IActionResult> RejectPtProfileEditRequestAsync(Guid requestId, [FromBody] LockedIn.BusinessObject.DTOs.Admin.RejectProfileEditRequest request)
     {
         var result = await _service.RejectPtProfileEditRequestAsync(requestId, request);
+        return Ok(result);
+    }
+
+    [HttpPost("addon-products")]
+    public async Task<IActionResult> CreateAddonProductAsync([FromBody] CreateAddonProductRequest request)
+    {
+        var result = await _service.CreateAddonProductAsync(request);
+        return Ok(result);
+    }
+
+    [HttpGet("addon-products")]
+    public async Task<IActionResult> GetAddonProductsAsync(
+        [FromQuery] PaginationRequest request,
+        [FromQuery] string? search = null,
+        [FromQuery] int? productType = null,
+        [FromQuery] bool? isActive = null)
+    {
+        var result = await _service.GetAddonProductsAsync(request, search, productType, isActive);
+        return Ok(result);
+    }
+
+    [HttpGet("addon-products/{productId}")]
+    public async Task<IActionResult> GetAddonProductByIdAsync(Guid productId)
+    {
+        var result = await _service.GetAddonProductByIdAsync(productId);
+        return Ok(result);
+    }
+
+    [HttpPatch("addon-products/{productId}/activate")]
+    public async Task<IActionResult> ActivateAddonProductAsync(Guid productId)
+    {
+        var result = await _service.ActivateAddonProductAsync(productId);
+        return Ok(result);
+    }
+
+    [HttpPatch("addon-products/{productId}/deactivate")]
+    public async Task<IActionResult> DeactivateAddonProductAsync(Guid productId)
+    {
+        var result = await _service.DeactivateAddonProductAsync(productId);
+        return Ok(result);
+    }
+
+    [HttpPost("addon-products/{productId}/prices")]
+    public async Task<IActionResult> CreateAddonProductPriceAsync(Guid productId, [FromBody] CreateAddonProductPriceRequest request)
+    {
+        var result = await _service.CreateAddonProductPriceAsync(productId, request);
+        return Ok(result);
+    }
+
+    [HttpGet("addon-products/{productId}/prices")]
+    public async Task<IActionResult> GetAddonProductPricesAsync(Guid productId)
+    {
+        var result = await _service.GetAddonProductPricesAsync(productId);
         return Ok(result);
     }
 }

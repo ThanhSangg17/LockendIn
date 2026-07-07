@@ -1,4 +1,5 @@
 using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using LockedIn.DataAccess.Interfaces;
 using LockedIn.DataAccess.Models;
@@ -33,6 +34,16 @@ public class UnitOfWork : IUnitOfWork
     public IAuditLogRepository AuditLogs { get; }
     public IWorkspaceSessionRepository WorkspaceSessions { get; }
 
+    public IAddonProductRepository AddonProducts { get; }
+    public IAddonProductPriceRepository AddonProductPrices { get; }
+    public IAddonOrderRepository AddonOrders { get; }
+    public IAddonOrderItemRepository AddonOrderItems { get; }
+    public IAddonPaymentAttemptRepository AddonPaymentAttempts { get; }
+    public IAddonWebhookLogRepository AddonWebhookLogs { get; }
+    public IAddonEntitlementRepository AddonEntitlements { get; }
+    public IAddonQuotaReservationRepository AddonQuotaReservations { get; }
+    public IMealPlanQuotaCounterRepository MealPlanQuotaCounters { get; }
+
     public UnitOfWork(LockedInDbContext context)
     {
         _context = context;
@@ -57,6 +68,16 @@ public class UnitOfWork : IUnitOfWork
         Notifications = new NotificationRepository(_context);
         AuditLogs = new AuditLogRepository(_context);
         WorkspaceSessions = new WorkspaceSessionRepository(_context);
+        
+        AddonProducts = new AddonProductRepository(_context);
+        AddonProductPrices = new AddonProductPriceRepository(_context);
+        AddonOrders = new AddonOrderRepository(_context);
+        AddonOrderItems = new AddonOrderItemRepository(_context);
+        AddonPaymentAttempts = new AddonPaymentAttemptRepository(_context);
+        AddonWebhookLogs = new AddonWebhookLogRepository(_context);
+        AddonEntitlements = new AddonEntitlementRepository(_context);
+        AddonQuotaReservations = new AddonQuotaReservationRepository(_context);
+        MealPlanQuotaCounters = new MealPlanQuotaCounterRepository(_context);
     }
 
     public async Task<int> SaveChangesAsync()
@@ -69,6 +90,14 @@ public class UnitOfWork : IUnitOfWork
         if (_transaction == null)
         {
             _transaction = await _context.Database.BeginTransactionAsync();
+        }
+    }
+
+    public async Task BeginTransactionAsync(System.Data.IsolationLevel isolationLevel)
+    {
+        if (_transaction == null)
+        {
+            _transaction = await _context.Database.BeginTransactionAsync(isolationLevel);
         }
     }
 

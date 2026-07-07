@@ -8,4 +8,5 @@ public class GenerateMealPlanRequest
     public string Goal { get; set; } = null!;
     public string? Preference { get; set; }
     public string? AllergyNote { get; set; }
+    public Guid? GenerationRequestId { get; set; }
 }

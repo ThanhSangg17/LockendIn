@@ -34,4 +34,12 @@ public interface IAdminService
     Task<ApiResponse<ProfileEditRequestResponse>> GetPtProfileEditRequestByIdAsync(Guid requestId);
     Task<ApiResponse<ProfileEditRequestResponse>> ApprovePtProfileEditRequestAsync(Guid requestId);
     Task<ApiResponse<ProfileEditRequestResponse>> RejectPtProfileEditRequestAsync(Guid requestId, RejectProfileEditRequest request);
+
+    Task<ApiResponse<AddonProductResponse>> CreateAddonProductAsync(CreateAddonProductRequest request);
+    Task<ApiResponse<PagedResult<AddonProductResponse>>> GetAddonProductsAsync(PaginationRequest request, string? search = null, int? productType = null, bool? isActive = null);
+    Task<ApiResponse<AddonProductResponse>> GetAddonProductByIdAsync(Guid productId);
+    Task<ApiResponse<AddonProductResponse>> ActivateAddonProductAsync(Guid productId);
+    Task<ApiResponse<AddonProductResponse>> DeactivateAddonProductAsync(Guid productId);
+    Task<ApiResponse<AddonProductPriceResponse>> CreateAddonProductPriceAsync(Guid productId, CreateAddonProductPriceRequest request);
+    Task<ApiResponse<IReadOnlyList<AddonProductPriceResponse>>> GetAddonProductPricesAsync(Guid productId);
 }
