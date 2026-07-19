@@ -27,14 +27,14 @@ public class GeminiService : IGeminiService
     {
         _logger.LogInformation("Bắt đầu gọi AI để sinh thực đơn.");
 
-        var apiKey = _configuration["Gemini:ApiKey"];
+        var apiKey = _configuration["Gemini:ApiKey"]?.Trim();
         if (string.IsNullOrWhiteSpace(apiKey))
         {
             _logger.LogError("Thiếu cấu hình Gemini:ApiKey.");
             throw new InvalidOperationException("Cấu hình API Key của Gemini bị thiếu.");
         }
 
-        var model = _configuration["Gemini:Model"];
+        var model = _configuration["Gemini:Model"]?.Trim();
         if (string.IsNullOrWhiteSpace(model))
         {
             model = "gemini-3.1-flash-lite";
@@ -121,16 +121,18 @@ Desired JSON Schema:
 
         if (!response.IsSuccessStatusCode)
         {
-            _logger.LogError("Gemini API call failed with status code: {StatusCode}", response.StatusCode);
+            var errorBody = await response.Content.ReadAsStringAsync();
+            _logger.LogError("Gemini API call failed. StatusCode: {StatusCode}, Model: {Model}, ResponseBody: {ErrorBody}", response.StatusCode, model, errorBody);
+
             if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized || response.StatusCode == System.Net.HttpStatusCode.Forbidden)
             {
-                throw new Exception($"Lỗi xác thực với Gemini API (Status Code: {response.StatusCode}). Vui lòng kiểm tra lại API Key.");
+                throw new Exception($"Lỗi xác thực với Gemini API (Status Code: {response.StatusCode}). Vui lòng kiểm tra lại API Key. Chi tiết: {errorBody}");
             }
             if ((int)response.StatusCode == 429)
             {
-                throw new Exception("Yêu cầu quá tải (Rate limit exceeded) với Gemini API. Vui lòng thử lại sau.");
+                throw new Exception($"Yêu cầu quá tải (Rate limit exceeded) với Gemini API. Vui lòng thử lại sau. Chi tiết: {errorBody}");
             }
-            throw new Exception($"Gemini API trả về lỗi hệ thống (Status Code: {response.StatusCode}).");
+            throw new Exception($"Gemini API trả về lỗi hệ thống (Status Code: {response.StatusCode}). Chi tiết: {errorBody}");
         }
 
         var responseBody = await response.Content.ReadAsStringAsync();
