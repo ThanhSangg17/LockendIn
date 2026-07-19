@@ -90,7 +90,7 @@ public class PaymentsController : ControllerBase
             await _service.ConfirmAndGetPaymentStatusAsync(code, status);
         }
 
-        var frontendUrl = _configuration["Frontend:BaseUrl"] ?? "http://localhost:5173";
+        var frontendUrl = _configuration["Frontend:BaseUrl"] ?? "https://lockedin-gym.vercel.app";
         if (string.Equals(status, "PAID", StringComparison.OrdinalIgnoreCase))
         {
             return Redirect($"{frontendUrl}/payment-success?orderCode={orderCode}");
