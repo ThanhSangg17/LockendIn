@@ -119,5 +119,35 @@ namespace LockedIn.BusinessObject.Services
 
             return await SendEmailAsync(email, subject, htmlBody);
         }
+
+        public async Task<ApiResponse<string>> SendPasswordResetEmailAsync(string email, string fullName, string token)
+        {
+            var frontendBaseUrl = _configuration["Frontend:BaseUrl"];
+            if (string.IsNullOrWhiteSpace(frontendBaseUrl))
+            {
+                frontendBaseUrl = "http://localhost:5173";
+            }
+            frontendBaseUrl = frontendBaseUrl.TrimEnd('/');
+            var resetLink = $"{frontendBaseUrl}/reset-password?email={Uri.EscapeDataString(email)}&token={token}";
+
+            var subject = "LockedIn - Reset Your Password";
+            var htmlBody = $@"
+                <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eeeeee; border-radius: 5px;'>
+                    <h2 style='color: #333333;'>Password Reset Request</h2>
+                    <p style='color: #666666;'>Hi {fullName},</p>
+                    <p style='color: #666666;'>We received a request to reset your password. Click the button below to choose a new password:</p>
+                    <p style='margin: 30px 0;'>
+                        <a href='{resetLink}' style='background-color: #4CAF50; color: white; padding: 12px 24px; text-decoration: none; display: inline-block; border-radius: 4px; font-weight: bold;'>Reset Password</a>
+                    </p>
+                    <p style='color: #666666;'>Or copy and paste this link into your browser:</p>
+                    <p style='color: #888888; font-size: 13px;'><a href='{resetLink}'>{resetLink}</a></p>
+                    <hr style='border: none; border-top: 1px solid #eeeeee; margin: 30px 0;'/>
+                    <p style='color: #999999; font-size: 12px;'>This password reset link will expire in 1 hour.</p>
+                    <p style='color: #999999; font-size: 12px;'>If you did not request a password reset, you can safely ignore this email.</p>
+                    <p style='color: #999999; font-size: 12px;'>Best regards,<br/>The LockedIn Team</p>
+                </div>";
+
+            return await SendEmailAsync(email, subject, htmlBody);
+        }
     }
 }
