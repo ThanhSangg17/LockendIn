@@ -12,4 +12,5 @@ public interface IMarketplaceService
     Task<ApiResponse<MarketplacePtDetailResponse>> GetPtDetailAsync(Guid ptProfileId);
     Task<ApiResponse<IReadOnlyList<LockedIn.BusinessObject.DTOs.Packages.PackageResponse>>> GetPtPackagesAsync(Guid ptProfileId);
     Task<ApiResponse<IReadOnlyList<LockedIn.BusinessObject.DTOs.Reviews.ReviewResponse>>> GetPtReviewsAsync(Guid ptProfileId);
+    Task<ApiResponse<IReadOnlyList<TopRegisteredPackageResponse>>> GetTopRegisteredPackagesAsync();
 }

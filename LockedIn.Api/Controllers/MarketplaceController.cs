@@ -46,4 +46,11 @@ public class MarketplaceController : ControllerBase
         var result = await _service.GetPtReviewsAsync(ptProfileId);
         return Ok(result);
     }
+
+    [HttpGet("packages/top-registered")]
+    public async Task<IActionResult> GetTopRegisteredPackagesAsync()
+    {
+        var result = await _service.GetTopRegisteredPackagesAsync();
+        return Ok(result);
+    }
 }

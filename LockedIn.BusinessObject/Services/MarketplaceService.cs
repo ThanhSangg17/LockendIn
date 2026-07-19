@@ -171,5 +171,45 @@ public class MarketplaceService : IMarketplaceService
 
         return ApiResponse<IReadOnlyList<ReviewResponse>>.Ok(response, "Reviews retrieved successfully.");
     }
+
+    public async Task<ApiResponse<IReadOnlyList<TopRegisteredPackageResponse>>> GetTopRegisteredPackagesAsync()
+    {
+        var countedStatuses = new[]
+        {
+            (int)BookingStatus.Active,
+            (int)BookingStatus.CompletedPendingSettlement,
+            (int)BookingStatus.Settled,
+            (int)BookingStatus.Disputed
+        };
+
+        var packages = await _unitOfWork.Packages.Query()
+            .AsNoTracking()
+            .Where(p => !p.IsDeleted && p.IsActive 
+                     && !p.PtProfile.IsDeleted && p.PtProfile.VerificationStatus == (int)PtVerificationStatus.Approved
+                     && !p.PtProfile.User.IsDeleted && p.PtProfile.User.Status == (int)UserStatus.Active)
+            .Where(p => p.Bookings.Any(b => countedStatuses.Contains(b.Status)))
+            .Select(p => new TopRegisteredPackageResponse
+            {
+                Id = p.Id,
+                Name = p.Name,
+                Description = p.Description,
+                Price = p.Price,
+                SessionCount = p.SessionCount,
+                PtProfileId = p.PtProfileId,
+                PtName = p.PtProfile.User.FullName,
+                PtAvatarUrl = p.PtProfile.User.AvatarUrl,
+                RegisteredUserCount = p.Bookings
+                    .Where(b => countedStatuses.Contains(b.Status))
+                    .Select(b => b.CustomerId)
+                    .Distinct()
+                    .Count()
+            })
+            .OrderByDescending(p => p.RegisteredUserCount)
+            .ThenBy(p => p.Id)
+            .Take(10)
+            .ToListAsync();
+
+        return ApiResponse<IReadOnlyList<TopRegisteredPackageResponse>>.Ok(packages, "Top registered packages retrieved successfully.");
+    }
 }
 
