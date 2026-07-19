@@ -37,6 +37,7 @@ public class BookingService : IBookingService
 
         var userId = _currentUserService.UserId.Value;
         var customerProfile = await _unitOfWork.CustomerProfiles.Query()
+            .Include(c => c.User)
             .FirstOrDefaultAsync(c => c.UserId == userId && !c.IsDeleted);
 
         if (customerProfile == null)
@@ -46,6 +47,7 @@ public class BookingService : IBookingService
 
         var package = await _unitOfWork.Packages.Query()
             .Include(p => p.PtProfile)
+            .ThenInclude(pt => pt.User)
             .FirstOrDefaultAsync(p => p.Id == request.PackageId && !p.IsDeleted && p.IsActive);
 
         if (package == null)
@@ -74,6 +76,10 @@ public class BookingService : IBookingService
         await _unitOfWork.Bookings.AddAsync(booking);
         await _unitOfWork.SaveChangesAsync();
 
+        booking.Customer = customerProfile;
+        booking.PtProfile = package.PtProfile;
+        booking.Package = package;
+
         var response = MapToBookingResponse(booking);
         return ApiResponse<BookingResponse>.Ok(response, "Booking created successfully.");
     }
@@ -92,9 +98,12 @@ public class BookingService : IBookingService
 
         var userId = _currentUserService.UserId.Value;
         IQueryable<Booking> query = _unitOfWork.Bookings.Query()
+            .AsNoTracking()
             .Include(b => b.Package)
             .Include(b => b.PtProfile)
             .ThenInclude(p => p.User)
+            .Include(b => b.Customer)
+            .ThenInclude(c => c.User)
             .Include(b => b.Payments);
 
         if (_currentUserService.Role == (int)UserRole.Customer)
@@ -162,6 +171,7 @@ public class BookingService : IBookingService
 
         var bookings = await query
             .OrderByDescending(b => b.CreatedAt)
+            .ThenBy(b => b.Id)
             .Skip((request.PageNumber - 1) * request.PageSize)
             .Take(request.PageSize)
             .ToListAsync();
@@ -181,8 +191,11 @@ public class BookingService : IBookingService
                 TotalAmount = b.TotalAmount,
                 SessionCount = b.SessionCount,
                 CreatedAt = b.CreatedAt,
-                PackageName = b.Package?.Name ?? string.Empty,
+                CustomerName = b.Customer?.User?.FullName ?? string.Empty,
+                CustomerAvatarUrl = b.Customer?.User?.AvatarUrl,
                 PtName = b.PtProfile?.User?.FullName ?? string.Empty,
+                PtAvatarUrl = b.PtProfile?.User?.AvatarUrl,
+                PackageName = b.Package?.Name ?? string.Empty,
                 PaymentStatus = selectedPayment?.Status,
                 PaidAt = selectedPayment?.PaidAt
             };
@@ -266,6 +279,11 @@ public class BookingService : IBookingService
         }
 
         var booking = await _unitOfWork.Bookings.Query()
+            .Include(b => b.Customer)
+            .ThenInclude(c => c.User)
+            .Include(b => b.PtProfile)
+            .ThenInclude(p => p.User)
+            .Include(b => b.Package)
             .FirstOrDefaultAsync(b => b.Id == bookingId);
 
         if (booking == null)
@@ -315,6 +333,11 @@ public class BookingService : IBookingService
         }
 
         var booking = await _unitOfWork.Bookings.Query()
+            .Include(b => b.Customer)
+            .ThenInclude(c => c.User)
+            .Include(b => b.PtProfile)
+            .ThenInclude(p => p.User)
+            .Include(b => b.Package)
             .FirstOrDefaultAsync(b => b.Id == bookingId);
 
         if (booking == null)
@@ -426,6 +449,11 @@ public class BookingService : IBookingService
         }
 
         var booking = await _unitOfWork.Bookings.Query()
+            .Include(b => b.Customer)
+            .ThenInclude(c => c.User)
+            .Include(b => b.PtProfile)
+            .ThenInclude(p => p.User)
+            .Include(b => b.Package)
             .FirstOrDefaultAsync(b => b.Id == bookingId);
 
         if (booking == null)
@@ -476,6 +504,11 @@ public class BookingService : IBookingService
 
         var booking = await _unitOfWork.Bookings.Query()
             .Include(b => b.Workspace)
+            .Include(b => b.Customer)
+            .ThenInclude(c => c.User)
+            .Include(b => b.PtProfile)
+            .ThenInclude(p => p.User)
+            .Include(b => b.Package)
             .FirstOrDefaultAsync(b => b.Id == bookingId);
 
         if (booking == null)
@@ -675,7 +708,12 @@ public class BookingService : IBookingService
             Status = booking.Status,
             TotalAmount = booking.TotalAmount,
             SessionCount = booking.SessionCount,
-            CreatedAt = booking.CreatedAt
+            CreatedAt = booking.CreatedAt,
+            CustomerName = booking.Customer?.User?.FullName ?? string.Empty,
+            CustomerAvatarUrl = booking.Customer?.User?.AvatarUrl,
+            PtName = booking.PtProfile?.User?.FullName ?? string.Empty,
+            PtAvatarUrl = booking.PtProfile?.User?.AvatarUrl,
+            PackageName = booking.Package?.Name ?? string.Empty
         };
     }
 

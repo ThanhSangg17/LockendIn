@@ -12,4 +12,9 @@ public class BookingResponse
     public decimal TotalAmount { get; set; }
     public int SessionCount { get; set; }
     public DateTime CreatedAt { get; set; }
+    public string CustomerName { get; set; } = string.Empty;
+    public string? CustomerAvatarUrl { get; set; }
+    public string PtName { get; set; } = string.Empty;
+    public string? PtAvatarUrl { get; set; }
+    public string PackageName { get; set; } = string.Empty;
 }
