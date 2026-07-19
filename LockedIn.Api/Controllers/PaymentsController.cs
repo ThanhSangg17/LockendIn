@@ -109,7 +109,7 @@ public class PaymentsController : ControllerBase
             await _service.ConfirmAndGetPaymentStatusAsync(code, "CANCELLED");
         }
 
-        var frontendUrl = _configuration["Frontend:BaseUrl"] ?? "http://localhost:5173";
+        var frontendUrl = _configuration["Frontend:BaseUrl"] ?? "https://lockedin-gym.vercel.app";
         return Redirect($"{frontendUrl}/payment-failed?orderCode={orderCode}");
     }
 
