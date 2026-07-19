@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using LockedIn.BusinessObject.Common;
 using LockedIn.BusinessObject.DTOs.Payments;
@@ -12,4 +13,6 @@ public interface IPaymentService
     Task<ApiResponse<PaymentResponse>> GetPaymentByIdAsync(Guid paymentId);
     Task<ApiResponse<string>> HandlePayOsWebhookAsync(PayOS.Models.Webhooks.Webhook request);
     Task<ApiResponse<string>> CancelPaymentAsync(Guid paymentId);
+    Task<ApiResponse<IReadOnlyList<PaymentResponse>>> GetMyPaymentsAsync();
+    Task<ApiResponse<PaymentResponse>> ConfirmAndGetPaymentStatusAsync(long orderCode);
 }

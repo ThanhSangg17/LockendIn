@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
@@ -563,6 +564,184 @@ public class PaymentService : IPaymentService
             _logger.LogError(ex, "CancelPaymentAsync: Exception occurred during database updates for Payment {PaymentId}.", paymentId);
             return ApiResponse<string>.Fail($"Failed to cancel payment: {ex.Message}");
         }
+    }
+
+    public async Task<ApiResponse<PaymentResponse>> ConfirmAndGetPaymentStatusAsync(long orderCode)
+    {
+        _logger.LogInformation("ConfirmAndGetPaymentStatusAsync: Querying PayOS status for OrderCode {OrderCode}", orderCode);
+        
+        try
+        {
+            var paymentInfo = await _payOSClient.PaymentRequests.GetAsync(orderCode);
+            
+            var orderCodeStr = orderCode.ToString();
+            var payment = await _unitOfWork.Payments.Query()
+                .Include(p => p.Booking)
+                .FirstOrDefaultAsync(p => p.OrderCode == orderCodeStr);
+
+            if (payment == null)
+            {
+                return ApiResponse<PaymentResponse>.Fail("Payment record not found.");
+            }
+
+            if (payment.Status == (int)PaymentStatus.Success || payment.Status == (int)PaymentStatus.Failed)
+            {
+                return ApiResponse<PaymentResponse>.Ok(MapToPaymentResponse(payment));
+            }
+
+            var paymentStatusStr = paymentInfo.Status.ToString();
+
+            if (paymentStatusStr == "PAID")
+            {
+                await _unitOfWork.BeginTransactionAsync();
+                try
+                {
+                    payment.Status = (int)PaymentStatus.Success;
+                    payment.PaidAt = DateTime.UtcNow;
+                    payment.ProviderTransactionId = paymentInfo.Transactions?.LastOrDefault()?.Reference ?? ("MOCK-" + payment.OrderCode);
+
+                    var booking = payment.Booking;
+                    if (booking.Status != (int)BookingStatus.Active)
+                    {
+                        booking.Status = (int)BookingStatus.Active;
+                        booking.PaidAt = DateTime.UtcNow;
+                        booking.UpdatedAt = DateTime.UtcNow;
+                        _unitOfWork.Bookings.Update(booking);
+
+                        var existingWorkspace = await _unitOfWork.Workspaces.Query()
+                            .FirstOrDefaultAsync(w => w.BookingId == booking.Id);
+
+                        if (existingWorkspace == null)
+                        {
+                            var workspace = new Workspace
+                            {
+                                Id = Guid.NewGuid(),
+                                BookingId = booking.Id,
+                                CustomerId = booking.CustomerId,
+                                PtProfileId = booking.PtProfileId,
+                                Status = 1,
+                                CreatedAt = DateTime.UtcNow
+                            };
+                            await _unitOfWork.Workspaces.AddAsync(workspace);
+                        }
+
+                        var existingConversation = await _unitOfWork.Conversations.Query()
+                            .FirstOrDefaultAsync(c => c.BookingId == booking.Id);
+
+                        if (existingConversation == null)
+                        {
+                            var conversation = new Conversation
+                            {
+                                Id = Guid.NewGuid(),
+                                BookingId = booking.Id,
+                                CustomerId = booking.CustomerId,
+                                PtProfileId = booking.PtProfileId,
+                                FirebaseConversationId = "firebase-" + booking.Id.ToString(),
+                                CreatedAt = DateTime.UtcNow
+                            };
+                            await _unitOfWork.Conversations.AddAsync(conversation);
+                        }
+                    }
+
+                    _unitOfWork.Payments.Update(payment);
+                    await _unitOfWork.SaveChangesAsync();
+                    await _unitOfWork.CommitTransactionAsync();
+                    
+                    _logger.LogInformation("ConfirmAndGetPaymentStatusAsync: Successfully updated payment status to Success for OrderCode {OrderCode}", orderCode);
+                }
+                catch (Exception ex)
+                {
+                    await _unitOfWork.RollbackTransactionAsync();
+                    _logger.LogError(ex, "Error updating payment to Success on redirect for OrderCode {OrderCode}", orderCode);
+                }
+            }
+            else if (paymentStatusStr == "CANCELLED" || paymentStatusStr == "EXPIRED")
+            {
+                await _unitOfWork.BeginTransactionAsync();
+                try
+                {
+                    payment.Status = (int)PaymentStatus.Failed;
+                    payment.Booking.Status = (int)BookingStatus.Cancelled;
+                    payment.Booking.UpdatedAt = DateTime.UtcNow;
+
+                    _unitOfWork.Payments.Update(payment);
+                    _unitOfWork.Bookings.Update(payment.Booking);
+
+                    await _unitOfWork.SaveChangesAsync();
+                    await _unitOfWork.CommitTransactionAsync();
+
+                    _logger.LogInformation("ConfirmAndGetPaymentStatusAsync: Updated payment status to Failed for OrderCode {OrderCode}", orderCode);
+                }
+                catch (Exception ex)
+                {
+                    await _unitOfWork.RollbackTransactionAsync();
+                    _logger.LogError(ex, "Error updating payment to Failed on redirect for OrderCode {OrderCode}", orderCode);
+                }
+            }
+
+            return ApiResponse<PaymentResponse>.Ok(MapToPaymentResponse(payment));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "ConfirmAndGetPaymentStatusAsync: Failed to retrieve or process payment from PayOS for OrderCode {OrderCode}", orderCode);
+            return ApiResponse<PaymentResponse>.Fail($"Failed to retrieve payment from PayOS: {ex.Message}");
+        }
+    }
+
+    public async Task<ApiResponse<IReadOnlyList<PaymentResponse>>> GetMyPaymentsAsync()
+    {
+        if (!_currentUserService.IsAuthenticated || !_currentUserService.UserId.HasValue)
+        {
+            return ApiResponse<IReadOnlyList<PaymentResponse>>.Fail("User is not authenticated.");
+        }
+
+        var userId = _currentUserService.UserId.Value;
+        var role = _currentUserService.Role;
+
+        List<Payment> payments = new List<Payment>();
+
+        if (role == (int)UserRole.Customer)
+        {
+            var customerProfile = await _unitOfWork.CustomerProfiles.Query()
+                .FirstOrDefaultAsync(c => c.UserId == userId && !c.IsDeleted);
+
+            if (customerProfile != null)
+            {
+                payments = await _unitOfWork.Payments.Query()
+                    .Include(p => p.Booking)
+                    .Where(p => p.Booking.CustomerId == customerProfile.Id)
+                    .OrderByDescending(p => p.CreatedAt)
+                    .ToListAsync();
+            }
+        }
+        else if (role == (int)UserRole.PersonalTrainer)
+        {
+            var ptProfile = await _unitOfWork.PtProfiles.Query()
+                .FirstOrDefaultAsync(pt => pt.UserId == userId && !pt.IsDeleted);
+
+            if (ptProfile != null)
+            {
+                payments = await _unitOfWork.Payments.Query()
+                    .Include(p => p.Booking)
+                    .Where(p => p.Booking.PtProfileId == ptProfile.Id)
+                    .OrderByDescending(p => p.CreatedAt)
+                    .ToListAsync();
+            }
+        }
+        else if (role == (int)UserRole.Admin)
+        {
+            payments = await _unitOfWork.Payments.Query()
+                .Include(p => p.Booking)
+                .OrderByDescending(p => p.CreatedAt)
+                .ToListAsync();
+        }
+        else
+        {
+            return ApiResponse<IReadOnlyList<PaymentResponse>>.Fail("Access denied: Invalid user role.");
+        }
+
+        var response = payments.Select(MapToPaymentResponse).ToList();
+        return ApiResponse<IReadOnlyList<PaymentResponse>>.Ok(response, "Payments retrieved successfully.");
     }
 
     #region Helper Methods

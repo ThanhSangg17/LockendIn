@@ -7,6 +7,8 @@ using Microsoft.Extensions.Logging;
 using LockedIn.BusinessObject.Interfaces;
 using LockedIn.BusinessObject.DTOs.Payments;
 
+using Microsoft.Extensions.Configuration;
+
 namespace LockedIn.Api.Controllers;
 
 [ApiController]
@@ -15,11 +17,13 @@ namespace LockedIn.Api.Controllers;
 public class PaymentsController : ControllerBase
 {
     private readonly IPaymentService _service;
+    private readonly IConfiguration _configuration;
     private readonly ILogger<PaymentsController> _logger;
 
-    public PaymentsController(IPaymentService service, ILogger<PaymentsController> logger)
+    public PaymentsController(IPaymentService service, IConfiguration configuration, ILogger<PaymentsController> logger)
     {
         _service = service;
+        _configuration = configuration;
         _logger = logger;
     }
 
@@ -34,6 +38,13 @@ public class PaymentsController : ControllerBase
     public async Task<IActionResult> GetPaymentByBookingAsync(Guid bookingId)
     {
         var result = await _service.GetPaymentByBookingAsync(bookingId);
+        return Ok(result);
+    }
+
+    [HttpGet("my")]
+    public async Task<IActionResult> GetMyPaymentsAsync()
+    {
+        var result = await _service.GetMyPaymentsAsync();
         return Ok(result);
     }
 
@@ -70,36 +81,36 @@ public class PaymentsController : ControllerBase
 
     [HttpGet("payos/return")]
     [AllowAnonymous]
-    public IActionResult PayOsReturn()
+    public async Task<IActionResult> PayOsReturnAsync([FromQuery] string status, [FromQuery] string orderCode)
     {
-        // ReturnUrl is only for user redirect testing. Real payment confirmation must be handled later by PayOS webhook or payment status verification.
-        var queryParameters = Request.Query.ToDictionary(q => q.Key, q => q.Value.ToString());
+        _logger.LogInformation("PayOS Return Callback received status: {Status}, orderCode: {OrderCode}", status, orderCode);
         
-        _logger.LogInformation("PayOS Return Callback received query parameters: {Parameters}", 
-            System.Text.Json.JsonSerializer.Serialize(queryParameters));
-
-        return Ok(new
+        if (long.TryParse(orderCode, out long code))
         {
-            Message = "Redirected from PayOS successfully (Return).",
-            QueryParameters = queryParameters
-        });
+            await _service.ConfirmAndGetPaymentStatusAsync(code);
+        }
+
+        var frontendUrl = _configuration["Frontend:BaseUrl"] ?? "http://localhost:5173";
+        if (status == "PAID")
+        {
+            return Redirect($"{frontendUrl}/payment-success?orderCode={orderCode}");
+        }
+        return Redirect($"{frontendUrl}/payment-failed?orderCode={orderCode}");
     }
 
     [HttpGet("payos/cancel")]
     [AllowAnonymous]
-    public IActionResult PayOsCancel()
+    public async Task<IActionResult> PayOsCancelAsync([FromQuery] string orderCode)
     {
-        // ReturnUrl is only for user redirect testing. Real payment confirmation must be handled later by PayOS webhook or payment status verification.
-        var queryParameters = Request.Query.ToDictionary(q => q.Key, q => q.Value.ToString());
+        _logger.LogInformation("PayOS Cancel Callback received orderCode: {OrderCode}", orderCode);
 
-        _logger.LogInformation("PayOS Cancel Callback received query parameters: {Parameters}", 
-            System.Text.Json.JsonSerializer.Serialize(queryParameters));
-
-        return Ok(new
+        if (long.TryParse(orderCode, out long code))
         {
-            Message = "Redirected from PayOS successfully (Cancel).",
-            QueryParameters = queryParameters
-        });
+            await _service.ConfirmAndGetPaymentStatusAsync(code);
+        }
+
+        var frontendUrl = _configuration["Frontend:BaseUrl"] ?? "http://localhost:5173";
+        return Redirect($"{frontendUrl}/payment-failed?orderCode={orderCode}");
     }
 
     [HttpGet("payos/webhook")]
