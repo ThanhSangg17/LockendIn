@@ -566,14 +566,12 @@ public class PaymentService : IPaymentService
         }
     }
 
-    public async Task<ApiResponse<PaymentResponse>> ConfirmAndGetPaymentStatusAsync(long orderCode)
+    public async Task<ApiResponse<PaymentResponse>> ConfirmAndGetPaymentStatusAsync(long orderCode, string forceStatus = null)
     {
-        _logger.LogInformation("ConfirmAndGetPaymentStatusAsync: Querying PayOS status for OrderCode {OrderCode}", orderCode);
+        _logger.LogInformation("ConfirmAndGetPaymentStatusAsync: Querying/Forcing status for OrderCode {OrderCode}, forceStatus: {ForceStatus}", orderCode, forceStatus);
         
         try
         {
-            var paymentInfo = await _payOSClient.PaymentRequests.GetAsync(orderCode);
-            
             var orderCodeStr = orderCode.ToString();
             var payment = await _unitOfWork.Payments.Query()
                 .Include(p => p.Booking)
@@ -589,16 +587,24 @@ public class PaymentService : IPaymentService
                 return ApiResponse<PaymentResponse>.Ok(MapToPaymentResponse(payment));
             }
 
-            var paymentStatusStr = paymentInfo.Status.ToString();
+            string paymentStatusStr = forceStatus;
+            string providerTransactionId = null;
 
-            if (paymentStatusStr == "PAID")
+            if (string.IsNullOrEmpty(paymentStatusStr))
+            {
+                var paymentInfo = await _payOSClient.PaymentRequests.GetAsync(orderCode);
+                paymentStatusStr = paymentInfo.Status.ToString();
+                providerTransactionId = paymentInfo.Transactions?.LastOrDefault()?.Reference;
+            }
+
+            if (string.Equals(paymentStatusStr, "PAID", StringComparison.OrdinalIgnoreCase))
             {
                 await _unitOfWork.BeginTransactionAsync();
                 try
                 {
                     payment.Status = (int)PaymentStatus.Success;
                     payment.PaidAt = DateTime.UtcNow;
-                    payment.ProviderTransactionId = paymentInfo.Transactions?.LastOrDefault()?.Reference ?? ("MOCK-" + payment.OrderCode);
+                    payment.ProviderTransactionId = providerTransactionId ?? ("MOCK-" + payment.OrderCode);
 
                     var booking = payment.Booking;
                     if (booking.Status != (int)BookingStatus.Active)

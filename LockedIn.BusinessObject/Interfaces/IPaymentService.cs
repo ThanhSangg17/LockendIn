@@ -14,5 +14,5 @@ public interface IPaymentService
     Task<ApiResponse<string>> HandlePayOsWebhookAsync(PayOS.Models.Webhooks.Webhook request);
     Task<ApiResponse<string>> CancelPaymentAsync(Guid paymentId);
     Task<ApiResponse<IReadOnlyList<PaymentResponse>>> GetMyPaymentsAsync();
-    Task<ApiResponse<PaymentResponse>> ConfirmAndGetPaymentStatusAsync(long orderCode);
+    Task<ApiResponse<PaymentResponse>> ConfirmAndGetPaymentStatusAsync(long orderCode, string forceStatus = null);
 }

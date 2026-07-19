@@ -87,11 +87,11 @@ public class PaymentsController : ControllerBase
         
         if (long.TryParse(orderCode, out long code))
         {
-            await _service.ConfirmAndGetPaymentStatusAsync(code);
+            await _service.ConfirmAndGetPaymentStatusAsync(code, status);
         }
 
         var frontendUrl = _configuration["Frontend:BaseUrl"] ?? "http://localhost:5173";
-        if (status == "PAID")
+        if (string.Equals(status, "PAID", StringComparison.OrdinalIgnoreCase))
         {
             return Redirect($"{frontendUrl}/payment-success?orderCode={orderCode}");
         }
@@ -106,7 +106,7 @@ public class PaymentsController : ControllerBase
 
         if (long.TryParse(orderCode, out long code))
         {
-            await _service.ConfirmAndGetPaymentStatusAsync(code);
+            await _service.ConfirmAndGetPaymentStatusAsync(code, "CANCELLED");
         }
 
         var frontendUrl = _configuration["Frontend:BaseUrl"] ?? "http://localhost:5173";
