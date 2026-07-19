@@ -351,17 +351,130 @@ public class AuthService : IAuthService
 
     public async Task<ApiResponse<string>> LogoutAsync()
     {
-        return await Task.FromResult(ApiResponse<string>.Ok("Logged out successfully", "Logged out successfully"));
+        if (!_currentUserService.IsAuthenticated || !_currentUserService.UserId.HasValue)
+        {
+            return ApiResponse<string>.Fail("Unauthorized");
+        }
+
+        var userId = _currentUserService.UserId.Value;
+        var now = DateTime.UtcNow;
+
+        var activeTokens = await _unitOfWork.RefreshTokens.Query()
+            .Where(t => t.UserId == userId && t.RevokedAt == null && t.ExpiresAt > now)
+            .ToListAsync();
+
+        foreach (var token in activeTokens)
+        {
+            token.RevokedAt = now;
+            _unitOfWork.RefreshTokens.Update(token);
+        }
+
+        await _unitOfWork.SaveChangesAsync();
+
+        return ApiResponse<string>.Ok("Logged out successfully", "Logged out successfully");
     }
 
     public async Task<ApiResponse<string>> ForgotPasswordAsync(ForgotPasswordRequest request)
     {
-        return await Task.FromResult(ApiResponse<string>.Ok(string.Empty, "Not implemented yet"));
+        const string genericMessage = "If an account with that email exists, a password reset link has been sent.";
+
+        var email = request.Email?.Trim().ToLowerInvariant();
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            return ApiResponse<string>.Ok(string.Empty, genericMessage);
+        }
+
+        var user = await _unitOfWork.Users.Query()
+            .FirstOrDefaultAsync(u => u.Email == email && !u.IsDeleted);
+
+        if (user == null || user.Status != (int)UserStatus.Active)
+        {
+            // Do not reveal whether the email exists.
+            return ApiResponse<string>.Ok(string.Empty, genericMessage);
+        }
+
+        var expirationUtc = DateTime.UtcNow.AddHours(1);
+        var token = GeneratePasswordResetToken(user, expirationUtc);
+
+        try
+        {
+            await _emailService.SendPasswordResetEmailAsync(user.Email, user.FullName, token);
+        }
+        catch (Exception)
+        {
+            // Swallow email errors to avoid leaking account existence.
+        }
+
+        return ApiResponse<string>.Ok(string.Empty, genericMessage);
     }
 
     public async Task<ApiResponse<string>> ResetPasswordAsync(ResetPasswordRequest request)
     {
-        return await Task.FromResult(ApiResponse<string>.Ok(string.Empty, "Not implemented yet"));
+        const string invalidTokenMessage = "Invalid or expired password reset token.";
+
+        if (string.IsNullOrWhiteSpace(request.Email) ||
+            string.IsNullOrWhiteSpace(request.Token) ||
+            string.IsNullOrEmpty(request.NewPassword))
+        {
+            return ApiResponse<string>.Fail("Email, token and new password are required.");
+        }
+
+        var email = request.Email.Trim().ToLowerInvariant();
+
+        var user = await _unitOfWork.Users.Query()
+            .FirstOrDefaultAsync(u => u.Email == email && !u.IsDeleted);
+
+        if (user == null || user.Status != (int)UserStatus.Active)
+        {
+            return ApiResponse<string>.Fail(invalidTokenMessage);
+        }
+
+        if (!ValidatePasswordResetToken(user, request.Token))
+        {
+            return ApiResponse<string>.Fail(invalidTokenMessage);
+        }
+
+        var policyError = ValidatePasswordPolicy(request.NewPassword);
+        if (policyError != null)
+        {
+            return ApiResponse<string>.Fail(policyError);
+        }
+
+        if (BCrypt.Net.BCrypt.Verify(request.NewPassword, user.PasswordHash))
+        {
+            return ApiResponse<string>.Fail("New password must be different from the current password.");
+        }
+
+        var newPasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
+
+        await _unitOfWork.BeginTransactionAsync();
+        try
+        {
+            user.PasswordHash = newPasswordHash;
+            user.UpdatedAt = DateTime.UtcNow;
+            _unitOfWork.Users.Update(user);
+
+            var now = DateTime.UtcNow;
+            var activeTokens = await _unitOfWork.RefreshTokens.Query()
+                .Where(t => t.UserId == user.Id && t.RevokedAt == null && t.ExpiresAt > now)
+                .ToListAsync();
+
+            foreach (var token in activeTokens)
+            {
+                token.RevokedAt = now;
+                _unitOfWork.RefreshTokens.Update(token);
+            }
+
+            await _unitOfWork.SaveChangesAsync();
+            await _unitOfWork.CommitTransactionAsync();
+
+            return ApiResponse<string>.Ok("Password reset successfully.", "Password reset successfully. Please log in with your new password.");
+        }
+        catch (Exception ex)
+        {
+            await _unitOfWork.RollbackTransactionAsync();
+            return ApiResponse<string>.Fail($"Failed to reset password: {ex.Message}");
+        }
     }
 
     public async Task<ApiResponse<string>> VerifyEmailAsync(VerifyEmailRequest request)
@@ -662,6 +775,110 @@ public class AuthService : IAuthService
         using var sha256 = SHA256.Create();
         var hashedBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(token));
         return Convert.ToBase64String(hashedBytes);
+    }
+
+    private const string PasswordResetTokenPurpose = "password_reset";
+
+    /// <summary>
+    /// Generates a stateless password reset token:
+    /// payload = purpose|userId|email|expirationTicks, signed with HMACSHA256.
+    /// The HMAC key is derived from Jwt:SecretKey + the user's current password hash,
+    /// so the token is automatically invalidated once the password changes.
+    /// The password hash itself is never included in the token payload.
+    /// </summary>
+    private string GeneratePasswordResetToken(User user, DateTime expirationUtc)
+    {
+        var payload = $"{PasswordResetTokenPurpose}|{user.Id}|{user.Email}|{expirationUtc.Ticks}";
+        var signature = ComputePasswordResetSignature(payload, user.PasswordHash);
+        var tokenRaw = $"{payload}||{signature}";
+        return Microsoft.AspNetCore.WebUtilities.Base64UrlTextEncoder.Encode(Encoding.UTF8.GetBytes(tokenRaw));
+    }
+
+    private bool ValidatePasswordResetToken(User user, string token)
+    {
+        try
+        {
+            var bytes = Microsoft.AspNetCore.WebUtilities.Base64UrlTextEncoder.Decode(token);
+            var tokenRaw = Encoding.UTF8.GetString(bytes);
+            var parts = tokenRaw.Split("||");
+            if (parts.Length != 2)
+            {
+                return false;
+            }
+
+            var payload = parts[0];
+            var signature = parts[1];
+
+            var expectedSignature = ComputePasswordResetSignature(payload, user.PasswordHash);
+            if (!CryptographicOperations.FixedTimeEquals(
+                    Encoding.UTF8.GetBytes(signature),
+                    Encoding.UTF8.GetBytes(expectedSignature)))
+            {
+                return false;
+            }
+
+            var payloadParts = payload.Split('|');
+            if (payloadParts.Length != 4)
+            {
+                return false;
+            }
+
+            if (payloadParts[0] != PasswordResetTokenPurpose)
+            {
+                return false;
+            }
+
+            if (!Guid.TryParse(payloadParts[1], out var tokenUserId) || tokenUserId != user.Id)
+            {
+                return false;
+            }
+
+            if (!string.Equals(payloadParts[2], user.Email, StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
+            if (!long.TryParse(payloadParts[3], out var expirationTicks))
+            {
+                return false;
+            }
+
+            var expirationUtc = new DateTime(expirationTicks, DateTimeKind.Utc);
+            if (DateTime.UtcNow > expirationUtc)
+            {
+                return false;
+            }
+
+            return true;
+        }
+        catch (Exception)
+        {
+            return false;
+        }
+    }
+
+    private string ComputePasswordResetSignature(string payload, string passwordHash)
+    {
+        var secretKey = _configuration["Jwt:SecretKey"]!;
+        var keyMaterial = $"{secretKey}|{PasswordResetTokenPurpose}|{passwordHash}";
+        using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(keyMaterial));
+        var hashBytes = hmac.ComputeHash(Encoding.UTF8.GetBytes(payload));
+        return Convert.ToBase64String(hashBytes);
+    }
+
+    private static string? ValidatePasswordPolicy(string password)
+    {
+        if (string.IsNullOrEmpty(password) || password.Length < 8)
+        {
+            return "Password must be at least 8 characters long.";
+        }
+
+        if (!password.Any(char.IsLetter) || !password.Any(char.IsDigit))
+        {
+            return "Password must contain at least one letter and one digit.";
+        }
+
+        return null;
     }
 
     private string? ValidateRegisterInput(string email, string password, string fullName)

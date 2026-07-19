@@ -8,5 +8,6 @@ namespace LockedIn.BusinessObject.Interfaces
     {
         Task<ApiResponse<string>> SendEmailAsync(string toEmail, string subject, string htmlBody);
         Task<ApiResponse<string>> SendVerificationEmailAsync(Guid userId, string email, string fullName);
+        Task<ApiResponse<string>> SendPasswordResetEmailAsync(string email, string fullName, string token);
     }
 }
