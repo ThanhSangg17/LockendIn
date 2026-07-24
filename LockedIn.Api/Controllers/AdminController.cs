@@ -21,6 +21,13 @@ public class AdminController : ControllerBase
         _service = service;
     }
 
+    [HttpGet("dashboard/analytics")]
+    public async Task<IActionResult> GetDashboardAnalyticsAsync()
+    {
+        var result = await _service.GetDashboardAnalyticsAsync();
+        return Ok(result);
+    }
+
     [HttpGet("dashboard")]
     public async Task<IActionResult> GetDashboardAsync()
     {

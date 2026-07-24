@@ -11,6 +11,7 @@ namespace LockedIn.BusinessObject.Interfaces;
 
 public interface IAdminService
 {
+    Task<ApiResponse<DashboardAnalyticsResponse>> GetDashboardAnalyticsAsync();
     Task<ApiResponse<DashboardResponse>> GetDashboardAsync();
     Task<ApiResponse<IReadOnlyList<AdminUserResponse>>> GetUsersAsync();
     Task<ApiResponse<AdminUserResponse>> GetUserByIdAsync(Guid userId);

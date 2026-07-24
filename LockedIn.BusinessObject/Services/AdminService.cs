@@ -26,6 +26,175 @@ public class AdminService : IAdminService
         _currentUserService = currentUserService;
     }
 
+    public async Task<ApiResponse<DashboardAnalyticsResponse>> GetDashboardAnalyticsAsync()
+    {
+        if (!_currentUserService.IsAuthenticated || _currentUserService.Role != (int)UserRole.Admin)
+        {
+            return ApiResponse<DashboardAnalyticsResponse>.Fail("Only Admins can perform this action.");
+        }
+
+        var now = DateTime.UtcNow;
+        var startOfMonth = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+        var twelveMonthsAgo = now.AddMonths(-11);
+        var twelveMonthsAgoStart = new DateTime(twelveMonthsAgo.Year, twelveMonthsAgo.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+
+        // 1. KPIs
+        var totalUsers = await _unitOfWork.Users.Query()
+            .AsNoTracking()
+            .CountAsync(u => !u.IsDeleted);
+
+        var verifiedPTs = await _unitOfWork.PtProfiles.Query()
+            .AsNoTracking()
+            .CountAsync(pt => pt.VerificationStatus == (int)PtVerificationStatus.Approved && !pt.IsDeleted);
+
+        var monthlyBookings = await _unitOfWork.Bookings.Query()
+            .AsNoTracking()
+            .CountAsync(b => b.CreatedAt >= startOfMonth);
+
+        var monthlyRevenue = await _unitOfWork.Payments.Query()
+            .AsNoTracking()
+            .Where(p => p.Status == (int)PaymentStatus.Success && p.PaidAt >= startOfMonth)
+            .SumAsync(p => (decimal?)p.Amount) ?? 0m;
+
+        var pendingDisputes = await _unitOfWork.Disputes.Query()
+            .AsNoTracking()
+            .CountAsync(d => d.Status == (int)DisputeStatus.Open || d.Status == (int)DisputeStatus.UnderReview);
+
+        var activeWorkspaces = await _unitOfWork.Workspaces.Query()
+            .AsNoTracking()
+            .CountAsync(w => w.Status == (int)WorkspaceStatus.Active);
+
+        var kpis = new DashboardKpiDto
+        {
+            TotalUsers = totalUsers,
+            VerifiedPTs = verifiedPTs,
+            MonthlyBookings = monthlyBookings,
+            MonthlyRevenue = monthlyRevenue,
+            PendingDisputes = pendingDisputes,
+            ActiveWorkspaces = activeWorkspaces
+        };
+
+        // 2. Booking Status Summary
+        var bookingStatusCounts = await _unitOfWork.Bookings.Query()
+            .AsNoTracking()
+            .GroupBy(b => b.Status)
+            .Select(g => new { Status = g.Key, Count = g.Count() })
+            .ToListAsync();
+
+        var bookingStatusSummary = new BookingStatusSummaryDto
+        {
+            PendingPayment = bookingStatusCounts.FirstOrDefault(x => x.Status == (int)BookingStatus.PendingPayment)?.Count ?? 0,
+            PendingTrainerAcceptance = bookingStatusCounts.FirstOrDefault(x => x.Status == (int)BookingStatus.PendingTrainerAcceptance)?.Count ?? 0,
+            Active = bookingStatusCounts.FirstOrDefault(x => x.Status == (int)BookingStatus.Active)?.Count ?? 0,
+            CompletedPendingSettlement = bookingStatusCounts.FirstOrDefault(x => x.Status == (int)BookingStatus.CompletedPendingSettlement)?.Count ?? 0,
+            Settled = bookingStatusCounts.FirstOrDefault(x => x.Status == (int)BookingStatus.Settled)?.Count ?? 0,
+            Cancelled = bookingStatusCounts.FirstOrDefault(x => x.Status == (int)BookingStatus.Cancelled)?.Count ?? 0,
+            Refunded = bookingStatusCounts.FirstOrDefault(x => x.Status == (int)BookingStatus.Refunded)?.Count ?? 0,
+            Disputed = bookingStatusCounts.FirstOrDefault(x => x.Status == (int)BookingStatus.Disputed)?.Count ?? 0
+        };
+
+        // 3. Dispute Summary
+        var disputeStatusCounts = await _unitOfWork.Disputes.Query()
+            .AsNoTracking()
+            .GroupBy(d => d.Status)
+            .Select(g => new { Status = g.Key, Count = g.Count() })
+            .ToListAsync();
+
+        var disputeSummary = new DisputeSummaryDto
+        {
+            Open = disputeStatusCounts.FirstOrDefault(x => x.Status == (int)DisputeStatus.Open)?.Count ?? 0,
+            UnderReview = disputeStatusCounts.FirstOrDefault(x => x.Status == (int)DisputeStatus.UnderReview)?.Count ?? 0,
+            ResolvedRefundCustomer = disputeStatusCounts.FirstOrDefault(x => x.Status == (int)DisputeStatus.ResolvedRefundCustomer)?.Count ?? 0,
+            ResolvedReleaseToPT = disputeStatusCounts.FirstOrDefault(x => x.Status == (int)DisputeStatus.ResolvedReleaseToPT)?.Count ?? 0,
+            Withdrawn = disputeStatusCounts.FirstOrDefault(x => x.Status == (int)DisputeStatus.Withdrawn)?.Count ?? 0
+        };
+
+        // 4. New Users By Month
+        var newUsersByMonthData = await _unitOfWork.Users.Query()
+            .AsNoTracking()
+            .Where(u => !u.IsDeleted && u.CreatedAt >= twelveMonthsAgoStart)
+            .GroupBy(u => new { u.CreatedAt.Year, u.CreatedAt.Month })
+            .Select(g => new
+            {
+                g.Key.Year,
+                g.Key.Month,
+                Count = g.Count()
+            })
+            .ToListAsync();
+
+        var newUsersByMonth = new List<MonthlyUserRegistrationDto>();
+        for (int i = 11; i >= 0; i--)
+        {
+            var targetDate = now.AddMonths(-i);
+            var year = targetDate.Year;
+            var month = targetDate.Month;
+            var monthStr = $"{year}-{month:D2}";
+
+            var dbCount = newUsersByMonthData.FirstOrDefault(x => x.Year == year && x.Month == month)?.Count ?? 0;
+
+            newUsersByMonth.Add(new MonthlyUserRegistrationDto
+            {
+                Month = monthStr,
+                Count = dbCount
+            });
+        }
+
+        // 5. Top Revenue Trainers
+        var topRevenueTrainers = await _unitOfWork.Payments.Query()
+            .AsNoTracking()
+            .Where(p => p.Status == (int)PaymentStatus.Success && !p.Booking.PtProfile.IsDeleted && !p.Booking.PtProfile.User.IsDeleted)
+            .GroupBy(p => new
+            {
+                PtId = p.Booking.PtProfileId,
+                FullName = p.Booking.PtProfile.User.FullName,
+                AvatarUrl = p.Booking.PtProfile.User.AvatarUrl
+            })
+            .Select(g => new TopRevenueTrainerDto
+            {
+                PtId = g.Key.PtId,
+                FullName = g.Key.FullName,
+                AvatarUrl = g.Key.AvatarUrl,
+                Revenue = g.Sum(p => p.Amount),
+                BookingCount = g.Select(p => p.BookingId).Distinct().Count()
+            })
+            .OrderByDescending(t => t.Revenue)
+            .Take(10)
+            .ToListAsync();
+
+        // 6. Top Booked Packages
+        var topBookedPackages = await _unitOfWork.Bookings.Query()
+            .AsNoTracking()
+            .Where(b => !b.Package.IsDeleted && !b.Package.PtProfile.IsDeleted && !b.Package.PtProfile.User.IsDeleted)
+            .GroupBy(b => new
+            {
+                PackageId = b.PackageId,
+                PackageName = b.Package.Name,
+                TrainerName = b.Package.PtProfile.User.FullName
+            })
+            .Select(g => new TopBookedPackageDto
+            {
+                PackageId = g.Key.PackageId,
+                PackageName = g.Key.PackageName,
+                TrainerName = g.Key.TrainerName,
+                BookingCount = g.Count()
+            })
+            .OrderByDescending(p => p.BookingCount)
+            .Take(10)
+            .ToListAsync();
+
+        var response = new DashboardAnalyticsResponse
+        {
+            Kpis = kpis,
+            BookingStatusSummary = bookingStatusSummary,
+            DisputeSummary = disputeSummary,
+            NewUsersByMonth = newUsersByMonth,
+            TopRevenueTrainers = topRevenueTrainers,
+            TopBookedPackages = topBookedPackages
+        };
+
+        return ApiResponse<DashboardAnalyticsResponse>.Ok(response, "Dashboard analytics retrieved successfully.");
+    }
+
     public async Task<ApiResponse<DashboardResponse>> GetDashboardAsync()
     {
         if (!_currentUserService.IsAuthenticated || _currentUserService.Role != (int)UserRole.Admin)
