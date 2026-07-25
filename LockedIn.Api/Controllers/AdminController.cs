@@ -11,7 +11,7 @@ namespace LockedIn.Api.Controllers;
 
 [ApiController]
 [Route("api/admin")]
-[Authorize]
+[Authorize(Roles = "Admin")]
 public class AdminController : ControllerBase
 {
     private readonly IAdminService _service;
@@ -109,6 +109,13 @@ public class AdminController : ControllerBase
     public async Task<IActionResult> GetDisputesAsync()
     {
         var result = await _service.GetDisputesAsync();
+        return Ok(result);
+    }
+
+    [HttpGet("disputes/{disputeId}")]
+    public async Task<IActionResult> GetDisputeByIdAsync(Guid disputeId)
+    {
+        var result = await _service.GetDisputeByIdAsync(disputeId);
         return Ok(result);
     }
 

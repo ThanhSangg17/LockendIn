@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using LockedIn.BusinessObject.Common;
 using LockedIn.BusinessObject.Interfaces;
 using LockedIn.DataAccess.UnitOfWork;
@@ -19,11 +20,13 @@ public class AdminService : IAdminService
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUserService _currentUserService;
+    private readonly ILogger<AdminService> _logger;
 
-    public AdminService(IUnitOfWork unitOfWork, ICurrentUserService currentUserService)
+    public AdminService(IUnitOfWork unitOfWork, ICurrentUserService currentUserService, ILogger<AdminService> logger)
     {
         _unitOfWork = unitOfWork;
         _currentUserService = currentUserService;
+        _logger = logger;
     }
 
     public async Task<ApiResponse<DashboardAnalyticsResponse>> GetDashboardAnalyticsAsync()
@@ -702,21 +705,38 @@ public class AdminService : IAdminService
         }
 
         var disputes = await _unitOfWork.Disputes.Query()
+            .Include(d => d.Customer).ThenInclude(c => c.User)
+            .Include(d => d.PtProfile).ThenInclude(p => p.User)
+            .Include(d => d.Booking).ThenInclude(b => b.Package)
+            .Include(d => d.DisputeEvidences)
             .OrderByDescending(d => d.CreatedAt)
             .ToListAsync();
 
-        var response = disputes.Select(d => new AdminDisputeResponse
-        {
-            Id = d.Id,
-            BookingId = d.BookingId,
-            CustomerId = d.CustomerId,
-            PtProfileId = d.PtProfileId,
-            Reason = d.Reason,
-            Status = d.Status,
-            CreatedAt = d.CreatedAt
-        }).ToList();
-
+        var response = disputes.Select(MapToAdminDisputeResponse).ToList();
         return ApiResponse<IReadOnlyList<AdminDisputeResponse>>.Ok(response, "Disputes retrieved successfully.");
+    }
+
+    public async Task<ApiResponse<AdminDisputeResponse>> GetDisputeByIdAsync(Guid disputeId)
+    {
+        if (!_currentUserService.IsAuthenticated || _currentUserService.Role != (int)UserRole.Admin)
+        {
+            return ApiResponse<AdminDisputeResponse>.Fail("Only Admins can perform this action.");
+        }
+
+        var dispute = await _unitOfWork.Disputes.Query()
+            .Include(d => d.Customer).ThenInclude(c => c.User)
+            .Include(d => d.PtProfile).ThenInclude(p => p.User)
+            .Include(d => d.Booking).ThenInclude(b => b.Package)
+            .Include(d => d.DisputeEvidences)
+            .FirstOrDefaultAsync(d => d.Id == disputeId);
+
+        if (dispute == null)
+        {
+            return ApiResponse<AdminDisputeResponse>.Fail("Dispute not found.");
+        }
+
+        var response = MapToAdminDisputeResponse(dispute);
+        return ApiResponse<AdminDisputeResponse>.Ok(response, "Dispute detail retrieved successfully.");
     }
 
     public async Task<ApiResponse<AdminDisputeResponse>> MarkDisputeUnderReviewAsync(Guid disputeId)
@@ -727,6 +747,10 @@ public class AdminService : IAdminService
         }
 
         var dispute = await _unitOfWork.Disputes.Query()
+            .Include(d => d.Customer).ThenInclude(c => c.User)
+            .Include(d => d.PtProfile).ThenInclude(p => p.User)
+            .Include(d => d.Booking).ThenInclude(b => b.Package)
+            .Include(d => d.DisputeEvidences)
             .FirstOrDefaultAsync(d => d.Id == disputeId);
 
         if (dispute == null)
@@ -750,17 +774,7 @@ public class AdminService : IAdminService
         _unitOfWork.Disputes.Update(dispute);
         await _unitOfWork.SaveChangesAsync();
 
-        var response = new AdminDisputeResponse
-        {
-            Id = dispute.Id,
-            BookingId = dispute.BookingId,
-            CustomerId = dispute.CustomerId,
-            PtProfileId = dispute.PtProfileId,
-            Reason = dispute.Reason,
-            Status = dispute.Status,
-            CreatedAt = dispute.CreatedAt
-        };
-
+        var response = MapToAdminDisputeResponse(dispute);
         return ApiResponse<AdminDisputeResponse>.Ok(response, "Dispute marked under review successfully.");
     }
 
@@ -772,6 +786,10 @@ public class AdminService : IAdminService
         }
 
         var dispute = await _unitOfWork.Disputes.Query()
+            .Include(d => d.Customer).ThenInclude(c => c.User)
+            .Include(d => d.PtProfile).ThenInclude(p => p.User)
+            .Include(d => d.Booking).ThenInclude(b => b.Package)
+            .Include(d => d.DisputeEvidences)
             .FirstOrDefaultAsync(d => d.Id == disputeId);
 
         if (dispute == null)
@@ -851,7 +869,10 @@ public class AdminService : IAdminService
                     await _unitOfWork.Notifications.AddAsync(notification);
                 }
             }
-            catch {}
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to create refund resolution notification for dispute {DisputeId}", dispute.Id);
+            }
 
             // Audit log
             try
@@ -868,7 +889,10 @@ public class AdminService : IAdminService
                 };
                 await _unitOfWork.AuditLogs.AddAsync(auditLog);
             }
-            catch {}
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to create audit log for refund resolution of dispute {DisputeId}", dispute.Id);
+            }
 
             await _unitOfWork.SaveChangesAsync();
             await _unitOfWork.CommitTransactionAsync();
@@ -879,28 +903,22 @@ public class AdminService : IAdminService
             return ApiResponse<AdminDisputeResponse>.Fail($"Failed to resolve dispute: {ex.Message}");
         }
 
-        var response = new AdminDisputeResponse
-        {
-            Id = dispute.Id,
-            BookingId = dispute.BookingId,
-            CustomerId = dispute.CustomerId,
-            PtProfileId = dispute.PtProfileId,
-            Reason = dispute.Reason,
-            Status = dispute.Status,
-            CreatedAt = dispute.CreatedAt
-        };
-
+        var response = MapToAdminDisputeResponse(dispute);
         return ApiResponse<AdminDisputeResponse>.Ok(response, "Dispute resolved and customer refunded successfully.");
     }
 
     public async Task<ApiResponse<AdminDisputeResponse>> ResolveReleaseToPtAsync(Guid disputeId, ResolveDisputeRequest request)
     {
-        if (!_currentUserService.IsAuthenticated || _currentUserService.Role != (int)UserRole.Admin)
+        if (!_currentUserService.IsAuthenticated || !_currentUserService.Role.Equals((int)UserRole.Admin))
         {
             return ApiResponse<AdminDisputeResponse>.Fail("Only Admins can perform this action.");
         }
 
         var dispute = await _unitOfWork.Disputes.Query()
+            .Include(d => d.Customer).ThenInclude(c => c.User)
+            .Include(d => d.PtProfile).ThenInclude(p => p.User)
+            .Include(d => d.Booking).ThenInclude(b => b.Package)
+            .Include(d => d.DisputeEvidences)
             .FirstOrDefaultAsync(d => d.Id == disputeId);
 
         if (dispute == null)
@@ -989,7 +1007,10 @@ public class AdminService : IAdminService
                     await _unitOfWork.Notifications.AddAsync(notification);
                 }
             }
-            catch {}
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to create PT release resolution notification for dispute {DisputeId}", dispute.Id);
+            }
 
             // Audit log
             try
@@ -1006,7 +1027,10 @@ public class AdminService : IAdminService
                 };
                 await _unitOfWork.AuditLogs.AddAsync(auditLog);
             }
-            catch {}
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to create audit log for PT release resolution of dispute {DisputeId}", dispute.Id);
+            }
 
             await _unitOfWork.SaveChangesAsync();
             await _unitOfWork.CommitTransactionAsync();
@@ -1017,18 +1041,8 @@ public class AdminService : IAdminService
             return ApiResponse<AdminDisputeResponse>.Fail($"Failed to resolve dispute: {ex.Message}");
         }
 
-        var response = new AdminDisputeResponse
-        {
-            Id = dispute.Id,
-            BookingId = dispute.BookingId,
-            CustomerId = dispute.CustomerId,
-            PtProfileId = dispute.PtProfileId,
-            Reason = dispute.Reason,
-            Status = dispute.Status,
-            CreatedAt = dispute.CreatedAt
-        };
-
-        return ApiResponse<AdminDisputeResponse>.Ok(response, "Dispute resolved and funds released to PT successfully.");
+        var response = MapToAdminDisputeResponse(dispute);
+        return ApiResponse<AdminDisputeResponse>.Ok(response, "Dispute resolved and released to PT successfully.");
     }
 
     public async Task<ApiResponse<IReadOnlyList<AdminSettlementResponse>>> GetSettlementsAsync()
@@ -1868,6 +1882,41 @@ public class AdminService : IAdminService
             CreatedByAdminId = price.CreatedByAdminId,
             CreatedAt = price.CreatedAt,
             DeactivatedAt = price.DeactivatedAt
+        };
+    }
+
+    private AdminDisputeResponse MapToAdminDisputeResponse(Dispute d)
+    {
+        return new AdminDisputeResponse
+        {
+            Id = d.Id,
+            BookingId = d.BookingId,
+            CustomerId = d.CustomerId,
+            PtProfileId = d.PtProfileId,
+            Reason = d.Reason,
+            Description = d.Description,
+            Status = d.Status,
+            ResolutionNote = d.ResolutionNote,
+            ResolvedByAdminId = d.ResolvedByAdminId,
+            ResolvedAt = d.ResolvedAt,
+            CreatedAt = d.CreatedAt,
+            CustomerName = d.Customer?.User?.FullName,
+            CustomerEmail = d.Customer?.User?.Email,
+            PtName = d.PtProfile?.User?.FullName,
+            PtEmail = d.PtProfile?.User?.Email,
+            PackageName = d.Booking?.Package?.Name,
+            BookingAmount = d.Booking?.TotalAmount,
+            BookingStatus = d.Booking?.Status,
+            BookingStartDate = d.Booking?.StartedAt,
+            BookingCompletedAt = d.Booking?.CompletedAt,
+            Evidences = d.DisputeEvidences?.Select(e => new DisputeEvidenceResponse
+            {
+                Id = e.Id,
+                DisputeId = e.DisputeId,
+                FileUrl = e.FileUrl,
+                FileType = e.FileType,
+                UploadedAt = e.UploadedAt
+            }).ToList() ?? new List<DisputeEvidenceResponse>()
         };
     }
 

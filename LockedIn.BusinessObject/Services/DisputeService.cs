@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using LockedIn.BusinessObject.Common;
 using LockedIn.BusinessObject.Interfaces;
 using LockedIn.DataAccess.UnitOfWork;
@@ -16,11 +17,13 @@ public class DisputeService : IDisputeService
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUserService _currentUserService;
+    private readonly ILogger<DisputeService> _logger;
 
-    public DisputeService(IUnitOfWork unitOfWork, ICurrentUserService currentUserService)
+    public DisputeService(IUnitOfWork unitOfWork, ICurrentUserService currentUserService, ILogger<DisputeService> logger)
     {
         _unitOfWork = unitOfWork;
         _currentUserService = currentUserService;
+        _logger = logger;
     }
 
     public async Task<ApiResponse<DisputeResponse>> CreateDisputeAsync(CreateDisputeRequest request)
@@ -146,6 +149,8 @@ public class DisputeService : IDisputeService
             CreatedAt = DateTime.UtcNow
         };
 
+        var createdEvidences = new List<DisputeEvidence>();
+
         await _unitOfWork.BeginTransactionAsync();
         try
         {
@@ -162,6 +167,7 @@ public class DisputeService : IDisputeService
                     UploadedAt = DateTime.UtcNow
                 };
                 await _unitOfWork.DisputeEvidences.AddAsync(evidence);
+                createdEvidences.Add(evidence);
             }
 
             booking.Status = (int)BookingStatus.Disputed;
@@ -195,9 +201,9 @@ public class DisputeService : IDisputeService
                     await _unitOfWork.Notifications.AddAsync(notification);
                 }
             }
-            catch
+            catch (Exception ex)
             {
-                // silently ignore
+                _logger.LogError(ex, "Failed to create dispute notification for dispute {DisputeId}, booking {BookingId}", dispute.Id, booking.Id);
             }
 
             try
@@ -214,9 +220,9 @@ public class DisputeService : IDisputeService
                 };
                 await _unitOfWork.AuditLogs.AddAsync(auditLog);
             }
-            catch
+            catch (Exception ex)
             {
-                // silently ignore
+                _logger.LogError(ex, "Failed to create audit log for dispute {DisputeId}, booking {BookingId}", dispute.Id, booking.Id);
             }
 
             await _unitOfWork.SaveChangesAsync();
@@ -228,6 +234,7 @@ public class DisputeService : IDisputeService
             return ApiResponse<DisputeResponse>.Fail($"Failed to create dispute: {ex.Message}");
         }
 
+        dispute.DisputeEvidences = createdEvidences;
         var response = MapToDisputeResponse(dispute);
         return ApiResponse<DisputeResponse>.Ok(response, "Dispute created successfully.");
     }
@@ -265,6 +272,7 @@ public class DisputeService : IDisputeService
         }
 
         var disputes = await query
+            .Include(d => d.DisputeEvidences)
             .OrderByDescending(d => d.CreatedAt)
             .ToListAsync();
 
@@ -280,6 +288,7 @@ public class DisputeService : IDisputeService
         }
 
         var dispute = await _unitOfWork.Disputes.Query()
+            .Include(d => d.DisputeEvidences)
             .FirstOrDefaultAsync(d => d.Id == disputeId);
 
         if (dispute == null)
@@ -554,7 +563,8 @@ public class DisputeService : IDisputeService
             CreatedAt = dispute.CreatedAt,
             OriginalBookingStatus = dispute.OriginalBookingStatus,
             OriginalSettlementStatus = dispute.OriginalSettlementStatus,
-            WithdrawnAt = dispute.WithdrawnAt
+            WithdrawnAt = dispute.WithdrawnAt,
+            Evidences = dispute.DisputeEvidences?.Select(MapToEvidenceResponse).ToList() ?? new List<DisputeEvidenceResponse>()
         };
     }
 

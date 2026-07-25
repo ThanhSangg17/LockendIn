@@ -24,6 +24,7 @@ public interface IAdminService
     Task<ApiResponse<IReadOnlyList<AdminPaymentResponse>>> GetPaymentsAsync();
     Task<ApiResponse<AdminPaymentResponse>> GetPaymentByIdAsync(Guid paymentId);
     Task<ApiResponse<IReadOnlyList<AdminDisputeResponse>>> GetDisputesAsync();
+    Task<ApiResponse<AdminDisputeResponse>> GetDisputeByIdAsync(Guid disputeId);
     Task<ApiResponse<AdminDisputeResponse>> MarkDisputeUnderReviewAsync(Guid disputeId);
     Task<ApiResponse<AdminDisputeResponse>> ResolveRefundCustomerAsync(Guid disputeId, ResolveDisputeRequest request);
     Task<ApiResponse<AdminDisputeResponse>> ResolveReleaseToPtAsync(Guid disputeId, ResolveDisputeRequest request);

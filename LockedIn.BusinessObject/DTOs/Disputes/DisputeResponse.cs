@@ -18,4 +18,5 @@ public class DisputeResponse
     public int OriginalBookingStatus { get; set; }
     public int? OriginalSettlementStatus { get; set; }
     public DateTime? WithdrawnAt { get; set; }
+    public System.Collections.Generic.List<DisputeEvidenceResponse> Evidences { get; set; } = new();
 }
