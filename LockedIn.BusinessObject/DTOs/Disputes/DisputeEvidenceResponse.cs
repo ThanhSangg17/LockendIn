@@ -9,4 +9,7 @@ public class DisputeEvidenceResponse
     public string FileUrl { get; set; } = null!;
     public string? FileType { get; set; }
     public DateTime UploadedAt { get; set; }
+    public Guid? UploadedByUserId { get; set; }
+    public string? UploadedByRole { get; set; }
+    public string? UploaderName { get; set; }
 }

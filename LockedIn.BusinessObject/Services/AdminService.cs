@@ -708,7 +708,7 @@ public class AdminService : IAdminService
             .Include(d => d.Customer).ThenInclude(c => c.User)
             .Include(d => d.PtProfile).ThenInclude(p => p.User)
             .Include(d => d.Booking).ThenInclude(b => b.Package)
-            .Include(d => d.DisputeEvidences)
+            .Include(d => d.DisputeEvidences).ThenInclude(e => e.UploadedByUser)
             .OrderByDescending(d => d.CreatedAt)
             .ToListAsync();
 
@@ -727,7 +727,7 @@ public class AdminService : IAdminService
             .Include(d => d.Customer).ThenInclude(c => c.User)
             .Include(d => d.PtProfile).ThenInclude(p => p.User)
             .Include(d => d.Booking).ThenInclude(b => b.Package)
-            .Include(d => d.DisputeEvidences)
+            .Include(d => d.DisputeEvidences).ThenInclude(e => e.UploadedByUser)
             .FirstOrDefaultAsync(d => d.Id == disputeId);
 
         if (dispute == null)
@@ -750,7 +750,7 @@ public class AdminService : IAdminService
             .Include(d => d.Customer).ThenInclude(c => c.User)
             .Include(d => d.PtProfile).ThenInclude(p => p.User)
             .Include(d => d.Booking).ThenInclude(b => b.Package)
-            .Include(d => d.DisputeEvidences)
+            .Include(d => d.DisputeEvidences).ThenInclude(e => e.UploadedByUser)
             .FirstOrDefaultAsync(d => d.Id == disputeId);
 
         if (dispute == null)
@@ -789,7 +789,7 @@ public class AdminService : IAdminService
             .Include(d => d.Customer).ThenInclude(c => c.User)
             .Include(d => d.PtProfile).ThenInclude(p => p.User)
             .Include(d => d.Booking).ThenInclude(b => b.Package)
-            .Include(d => d.DisputeEvidences)
+            .Include(d => d.DisputeEvidences).ThenInclude(e => e.UploadedByUser)
             .FirstOrDefaultAsync(d => d.Id == disputeId);
 
         if (dispute == null)
@@ -918,7 +918,7 @@ public class AdminService : IAdminService
             .Include(d => d.Customer).ThenInclude(c => c.User)
             .Include(d => d.PtProfile).ThenInclude(p => p.User)
             .Include(d => d.Booking).ThenInclude(b => b.Package)
-            .Include(d => d.DisputeEvidences)
+            .Include(d => d.DisputeEvidences).ThenInclude(e => e.UploadedByUser)
             .FirstOrDefaultAsync(d => d.Id == disputeId);
 
         if (dispute == null)
@@ -1909,14 +1909,20 @@ public class AdminService : IAdminService
             BookingStatus = d.Booking?.Status,
             BookingStartDate = d.Booking?.StartedAt,
             BookingCompletedAt = d.Booking?.CompletedAt,
-            Evidences = d.DisputeEvidences?.Select(e => new DisputeEvidenceResponse
-            {
-                Id = e.Id,
-                DisputeId = e.DisputeId,
-                FileUrl = e.FileUrl,
-                FileType = e.FileType,
-                UploadedAt = e.UploadedAt
-            }).ToList() ?? new List<DisputeEvidenceResponse>()
+            Evidences = d.DisputeEvidences?
+                .OrderBy(e => e.UploadedAt)
+                .ThenBy(e => e.Id)
+                .Select(e => new DisputeEvidenceResponse
+                {
+                    Id = e.Id,
+                    DisputeId = e.DisputeId,
+                    FileUrl = e.FileUrl,
+                    FileType = e.FileType,
+                    UploadedAt = e.UploadedAt,
+                    UploadedByUserId = e.UploadedByUserId,
+                    UploadedByRole = e.UploadedByRole,
+                    UploaderName = e.UploadedByUser?.FullName
+                }).ToList() ?? new List<DisputeEvidenceResponse>()
         };
     }
 

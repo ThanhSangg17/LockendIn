@@ -368,10 +368,20 @@ public partial class LockedInDbContext : DbContext
                 .HasDefaultValueSql("(sysutcdatetime())")
                 .HasColumnName("uploaded_at");
 
+            entity.Property(e => e.UploadedByUserId).HasColumnName("uploaded_by_user_id");
+            entity.Property(e => e.UploadedByRole)
+                .HasMaxLength(50)
+                .HasColumnName("uploaded_by_role");
+
             entity.HasOne(d => d.Dispute).WithMany(p => p.DisputeEvidences)
                 .HasForeignKey(d => d.DisputeId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("fk_dispute_evidences_dispute_id");
+
+            entity.HasOne(d => d.UploadedByUser).WithMany()
+                .HasForeignKey(d => d.UploadedByUserId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("fk_dispute_evidences_uploaded_by_user_id");
         });
 
         modelBuilder.Entity<MealPlan>(entity =>

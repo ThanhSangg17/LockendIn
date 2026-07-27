@@ -164,7 +164,9 @@ public class DisputeService : IDisputeService
                     DisputeId = dispute.Id,
                     FileUrl = evReq.FileUrl,
                     FileType = evReq.FileType ?? "Image",
-                    UploadedAt = DateTime.UtcNow
+                    UploadedAt = DateTime.UtcNow,
+                    UploadedByUserId = customerProfile.UserId,
+                    UploadedByRole = "Customer"
                 };
                 await _unitOfWork.DisputeEvidences.AddAsync(evidence);
                 createdEvidences.Add(evidence);
@@ -266,13 +268,13 @@ public class DisputeService : IDisputeService
             }
             query = query.Where(d => d.PtProfileId == pt.Id);
         }
-        else if (_currentUserService.Role != (int)UserRole.Admin)
+        else
         {
-            return ApiResponse<IReadOnlyList<DisputeResponse>>.Fail("Access denied.");
+            return ApiResponse<IReadOnlyList<DisputeResponse>>.Fail("Access denied. Admin should use /api/admin/disputes.");
         }
 
         var disputes = await query
-            .Include(d => d.DisputeEvidences)
+            .Include(d => d.DisputeEvidences).ThenInclude(e => e.UploadedByUser)
             .OrderByDescending(d => d.CreatedAt)
             .ToListAsync();
 
@@ -288,7 +290,7 @@ public class DisputeService : IDisputeService
         }
 
         var dispute = await _unitOfWork.Disputes.Query()
-            .Include(d => d.DisputeEvidences)
+            .Include(d => d.DisputeEvidences).ThenInclude(e => e.UploadedByUser)
             .FirstOrDefaultAsync(d => d.Id == disputeId);
 
         if (dispute == null)
@@ -348,18 +350,17 @@ public class DisputeService : IDisputeService
             return ApiResponse<DisputeEvidenceResponse>.Fail("Dispute not found.");
         }
 
-        bool hasAccess = false;
+        string uploaderRole = "";
+        bool isParticipatingCustomer = false;
+        bool isParticipatingPt = false;
 
-        if (_currentUserService.Role == (int)UserRole.Admin)
-        {
-            hasAccess = true;
-        }
-        else if (_currentUserService.Role == (int)UserRole.Customer)
+        if (_currentUserService.Role == (int)UserRole.Customer)
         {
             var customer = await GetCurrentCustomerProfileAsync();
             if (customer != null && dispute.CustomerId == customer.Id)
             {
-                hasAccess = true;
+                isParticipatingCustomer = true;
+                uploaderRole = "Customer";
             }
         }
         else if (_currentUserService.Role == (int)UserRole.PersonalTrainer)
@@ -367,13 +368,14 @@ public class DisputeService : IDisputeService
             var pt = await GetCurrentPtProfileAsync();
             if (pt != null && dispute.PtProfileId == pt.Id)
             {
-                hasAccess = true;
+                isParticipatingPt = true;
+                uploaderRole = "PersonalTrainer";
             }
         }
 
-        if (!hasAccess)
+        if (!isParticipatingCustomer && !isParticipatingPt)
         {
-            return ApiResponse<DisputeEvidenceResponse>.Fail("Access denied to this dispute.");
+            return ApiResponse<DisputeEvidenceResponse>.Fail("Only participating Customer or Personal Trainer can upload evidence to this dispute.");
         }
 
         if (dispute.Status != (int)DisputeStatus.Open && dispute.Status != (int)DisputeStatus.UnderReview)
@@ -387,11 +389,50 @@ public class DisputeService : IDisputeService
             DisputeId = dispute.Id,
             FileUrl = request.FileUrl,
             FileType = request.FileType ?? "Image",
-            UploadedAt = DateTime.UtcNow
+            UploadedAt = DateTime.UtcNow,
+            UploadedByUserId = _currentUserService.UserId.Value,
+            UploadedByRole = uploaderRole
         };
 
         await _unitOfWork.DisputeEvidences.AddAsync(evidence);
         await _unitOfWork.SaveChangesAsync();
+
+        // Notification: Notify the other party
+        try
+        {
+            Guid? recipientUserId = null;
+            if (uploaderRole == "Customer")
+            {
+                var pt = await _unitOfWork.PtProfiles.Query().FirstOrDefaultAsync(p => p.Id == dispute.PtProfileId);
+                recipientUserId = pt?.UserId;
+            }
+            else if (uploaderRole == "PersonalTrainer")
+            {
+                var cust = await _unitOfWork.CustomerProfiles.Query().FirstOrDefaultAsync(c => c.Id == dispute.CustomerId);
+                recipientUserId = cust?.UserId;
+            }
+
+            if (recipientUserId.HasValue && recipientUserId.Value != Guid.Empty)
+            {
+                var notification = new Notification
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = recipientUserId.Value,
+                    Title = "New dispute evidence uploaded",
+                    Content = $"New evidence has been uploaded for dispute.",
+                    Type = (int)NotificationType.Dispute,
+                    IsRead = false,
+                    IsDeleted = false,
+                    CreatedAt = DateTime.UtcNow
+                };
+                await _unitOfWork.Notifications.AddAsync(notification);
+                await _unitOfWork.SaveChangesAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to create evidence notification for dispute {DisputeId}", dispute.Id);
+        }
 
         var response = MapToEvidenceResponse(evidence);
         return ApiResponse<DisputeEvidenceResponse>.Ok(response, "Evidence uploaded successfully.");
@@ -563,8 +604,11 @@ public class DisputeService : IDisputeService
             CreatedAt = dispute.CreatedAt,
             OriginalBookingStatus = dispute.OriginalBookingStatus,
             OriginalSettlementStatus = dispute.OriginalSettlementStatus,
-            WithdrawnAt = dispute.WithdrawnAt,
-            Evidences = dispute.DisputeEvidences?.Select(MapToEvidenceResponse).ToList() ?? new List<DisputeEvidenceResponse>()
+            Evidences = dispute.DisputeEvidences?
+                .OrderBy(e => e.UploadedAt)
+                .ThenBy(e => e.Id)
+                .Select(MapToEvidenceResponse)
+                .ToList() ?? new List<DisputeEvidenceResponse>()
         };
     }
 
@@ -576,7 +620,10 @@ public class DisputeService : IDisputeService
             DisputeId = evidence.DisputeId,
             FileUrl = evidence.FileUrl,
             FileType = evidence.FileType,
-            UploadedAt = evidence.UploadedAt
+            UploadedAt = evidence.UploadedAt,
+            UploadedByUserId = evidence.UploadedByUserId,
+            UploadedByRole = evidence.UploadedByRole,
+            UploaderName = evidence.UploadedByUser?.FullName
         };
     }
 

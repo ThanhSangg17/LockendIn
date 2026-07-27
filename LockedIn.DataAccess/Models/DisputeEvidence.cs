@@ -15,5 +15,11 @@ public partial class DisputeEvidence
 
     public DateTime UploadedAt { get; set; }
 
+    public Guid? UploadedByUserId { get; set; }
+
+    public string? UploadedByRole { get; set; }
+
     public virtual Dispute Dispute { get; set; } = null!;
+
+    public virtual User? UploadedByUser { get; set; }
 }
