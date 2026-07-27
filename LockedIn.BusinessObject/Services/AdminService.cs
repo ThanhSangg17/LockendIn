@@ -909,7 +909,7 @@ public class AdminService : IAdminService
 
     public async Task<ApiResponse<AdminDisputeResponse>> ResolveReleaseToPtAsync(Guid disputeId, ResolveDisputeRequest request)
     {
-        if (!_currentUserService.IsAuthenticated || !_currentUserService.Role.Equals((int)UserRole.Admin))
+        if (!_currentUserService.IsAuthenticated || _currentUserService.Role != (int)UserRole.Admin)
         {
             return ApiResponse<AdminDisputeResponse>.Fail("Only Admins can perform this action.");
         }

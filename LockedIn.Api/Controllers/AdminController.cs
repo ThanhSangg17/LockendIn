@@ -11,7 +11,7 @@ namespace LockedIn.Api.Controllers;
 
 [ApiController]
 [Route("api/admin")]
-[Authorize(Roles = "Admin")]
+[Authorize(Roles = "3,Admin")]
 public class AdminController : ControllerBase
 {
     private readonly IAdminService _service;
