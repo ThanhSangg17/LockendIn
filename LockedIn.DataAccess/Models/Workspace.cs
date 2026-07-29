@@ -29,5 +29,7 @@ public partial class Workspace
 
     public virtual ICollection<WorkspaceSession> WorkspaceSessions { get; set; } = new List<WorkspaceSession>();
 
+    public virtual ICollection<SessionProposal> SessionProposals { get; set; } = new List<SessionProposal>();
+
     public virtual PtProfile PtProfile { get; set; } = null!;
 }

@@ -57,6 +57,11 @@ public partial class LockedInDbContext : DbContext
 
     public virtual DbSet<WorkspaceSession> WorkspaceSessions { get; set; }
 
+    public virtual DbSet<SessionProposal> SessionProposals { get; set; }
+
+    public virtual DbSet<SessionProposalSlot> SessionProposalSlots { get; set; }
+
+
     public virtual DbSet<AddonProduct> AddonProducts { get; set; }
     public virtual DbSet<AddonProductPrice> AddonProductPrices { get; set; }
     public virtual DbSet<AddonOrder> AddonOrders { get; set; }
@@ -971,6 +976,12 @@ public partial class LockedInDbContext : DbContext
                 .HasColumnName("id");
             entity.Property(e => e.WorkspaceId).HasColumnName("workspace_id");
             entity.Property(e => e.SessionNumber).HasColumnName("session_number");
+            entity.Property(e => e.Status).HasDefaultValue(3).HasColumnName("status");
+            entity.Property(e => e.ScheduledStart).HasColumnName("scheduled_start");
+            entity.Property(e => e.ScheduledEnd).HasColumnName("scheduled_end");
+            entity.Property(e => e.PtCheckedInAt).HasColumnName("pt_checked_in_at");
+            entity.Property(e => e.CustomerCheckedInAt).HasColumnName("customer_checked_in_at");
+            entity.Property(e => e.StartedAt).HasColumnName("started_at");
             entity.Property(e => e.Description).HasColumnName("description");
             entity.Property(e => e.CompletedAt).HasColumnName("completed_at");
             entity.Property(e => e.CreatedAt)
@@ -982,6 +993,42 @@ public partial class LockedInDbContext : DbContext
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("fk_workspace_sessions_workspace_id");
         });
+
+        modelBuilder.Entity<SessionProposal>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("pk_session_proposals");
+            entity.ToTable("session_proposals");
+            entity.HasIndex(e => new { e.WorkspaceId, e.SessionNumber, e.Status }, "ix_session_proposals_workspace_session_status");
+            entity.Property(e => e.Id).HasDefaultValueSql("(newid())").HasColumnName("id");
+            entity.Property(e => e.WorkspaceId).HasColumnName("workspace_id");
+            entity.Property(e => e.SessionNumber).HasColumnName("session_number");
+            entity.Property(e => e.Status).HasDefaultValue(0).HasColumnName("status");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("(sysutcdatetime())").HasColumnName("created_at");
+            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
+
+            entity.HasOne(d => d.Workspace).WithMany(p => p.SessionProposals)
+                .HasForeignKey(d => d.WorkspaceId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("fk_session_proposals_workspace_id");
+        });
+
+        modelBuilder.Entity<SessionProposalSlot>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("pk_session_proposal_slots");
+            entity.ToTable("session_proposal_slots");
+            entity.HasIndex(e => e.ProposalId, "ix_session_proposal_slots_proposal_id");
+            entity.Property(e => e.Id).HasDefaultValueSql("(newid())").HasColumnName("id");
+            entity.Property(e => e.ProposalId).HasColumnName("proposal_id");
+            entity.Property(e => e.Date).HasColumnName("date");
+            entity.Property(e => e.SlotCode).HasMaxLength(50).HasColumnName("slot_code");
+            entity.Property(e => e.IsSelected).HasDefaultValue(false).HasColumnName("is_selected");
+
+            entity.HasOne(d => d.Proposal).WithMany(p => p.SessionProposalSlots)
+                .HasForeignKey(d => d.ProposalId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("fk_session_proposal_slots_proposal_id");
+        });
+
 
         modelBuilder.Entity<AddonProduct>(entity =>
         {

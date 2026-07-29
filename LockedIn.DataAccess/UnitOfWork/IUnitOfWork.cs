@@ -27,6 +27,8 @@ public interface IUnitOfWork : IDisposable
     INotificationRepository Notifications { get; }
     IAuditLogRepository AuditLogs { get; }
     IWorkspaceSessionRepository WorkspaceSessions { get; }
+    ISessionProposalRepository SessionProposals { get; }
+
 
     IAddonProductRepository AddonProducts { get; }
     IAddonProductPriceRepository AddonProductPrices { get; }

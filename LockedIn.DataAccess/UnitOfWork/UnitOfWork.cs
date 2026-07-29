@@ -33,6 +33,8 @@ public class UnitOfWork : IUnitOfWork
     public INotificationRepository Notifications { get; }
     public IAuditLogRepository AuditLogs { get; }
     public IWorkspaceSessionRepository WorkspaceSessions { get; }
+    public ISessionProposalRepository SessionProposals { get; }
+
 
     public IAddonProductRepository AddonProducts { get; }
     public IAddonProductPriceRepository AddonProductPrices { get; }
@@ -68,6 +70,8 @@ public class UnitOfWork : IUnitOfWork
         Notifications = new NotificationRepository(_context);
         AuditLogs = new AuditLogRepository(_context);
         WorkspaceSessions = new WorkspaceSessionRepository(_context);
+        SessionProposals = new SessionProposalRepository(_context);
+
         
         AddonProducts = new AddonProductRepository(_context);
         AddonProductPrices = new AddonProductPriceRepository(_context);
