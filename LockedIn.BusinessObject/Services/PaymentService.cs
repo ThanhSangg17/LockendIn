@@ -127,6 +127,12 @@ public class PaymentService : IPaymentService
             return ApiResponse<PaymentResponse>.Fail($"Failed to create payment link with PayOS: {ex.Message}");
         }
 
+        string? qrCodeImageUrl = null;
+        if (!string.IsNullOrWhiteSpace(paymentLink.QrCode))
+        {
+            qrCodeImageUrl = $"https://api.qrserver.com/v1/create-qr-code/?size=300x300&data={Uri.EscapeDataString(paymentLink.QrCode)}";
+        }
+
         var orderCodeStr = payOsOrderCode.ToString();
         var payment = new Payment
         {
@@ -145,6 +151,7 @@ public class PaymentService : IPaymentService
         await _unitOfWork.SaveChangesAsync();
 
         var response = MapToPaymentResponse(payment);
+        response.QrCodeImageUrl = qrCodeImageUrl;
         return ApiResponse<PaymentResponse>.Ok(response, "Payment link created successfully.");
     }
 

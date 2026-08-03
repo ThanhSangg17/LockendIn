@@ -11,6 +11,7 @@ public class PaymentResponse
     public decimal Amount { get; set; }
     public int Status { get; set; }
     public string? CheckoutUrl { get; set; }
+    public string? QrCodeImageUrl { get; set; }
     public string? ProviderTransactionId { get; set; }
     public DateTime? PaidAt { get; set; }
     public DateTime? ExpiredAt { get; set; }
