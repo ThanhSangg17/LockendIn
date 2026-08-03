@@ -45,4 +45,15 @@ public class UsersController : ControllerBase
         var result = await _service.ChangePasswordAsync(request);
         return Ok(result);
     }
+
+    [HttpPost("me/delete-account")]
+    public async Task<IActionResult> DeleteMyAccountAsync([FromBody] DeleteAccountRequest request)
+    {
+        var result = await _service.DeleteMyAccountAsync(request);
+        if (!result.Success)
+        {
+            return BadRequest(result);
+        }
+        return Ok(result);
+    }
 }

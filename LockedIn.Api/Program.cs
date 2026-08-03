@@ -1,5 +1,6 @@
 using System;
 using System.Text;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -111,6 +112,24 @@ namespace LockedIn.Api
                     {
                         Console.WriteLine("JWT Authentication failed: " + context.Exception.Message);
                         return Task.CompletedTask;
+                    },
+                    OnTokenValidated = async context =>
+                    {
+                        var unitOfWork = context.HttpContext.RequestServices.GetRequiredService<IUnitOfWork>();
+                        var userIdClaim = context.Principal?.FindFirst(ClaimTypes.NameIdentifier)?.Value 
+                                          ?? context.Principal?.FindFirst("sub")?.Value;
+
+                        if (Guid.TryParse(userIdClaim, out var userId))
+                        {
+                            var isDeleted = await unitOfWork.Users.Query()
+                                .AsNoTracking()
+                                .AnyAsync(u => u.Id == userId && u.IsDeleted);
+
+                            if (isDeleted)
+                            {
+                                context.Fail("User account has been deleted.");
+                            }
+                        }
                     }
                 };
             });

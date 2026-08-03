@@ -170,6 +170,107 @@ public class UserService : IUserService
         }
     }
 
+    public async Task<ApiResponse<string>> DeleteMyAccountAsync(DeleteAccountRequest request)
+    {
+        if (!_currentUserService.IsAuthenticated || !_currentUserService.UserId.HasValue)
+        {
+            return ApiResponse<string>.Fail("User is not authenticated.");
+        }
+
+        var userId = _currentUserService.UserId.Value;
+        var user = await _unitOfWork.Users.Query()
+            .FirstOrDefaultAsync(u => u.Id == userId && !u.IsDeleted);
+
+        if (user == null)
+        {
+            return ApiResponse<string>.Fail("User not found.");
+        }
+
+        if (string.IsNullOrWhiteSpace(request.Password))
+        {
+            return ApiResponse<string>.Fail("Password is required.");
+        }
+
+        var isPasswordValid = BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash);
+        if (!isPasswordValid)
+        {
+            return ApiResponse<string>.Fail("Invalid password.");
+        }
+
+        await _unitOfWork.BeginTransactionAsync();
+        try
+        {
+            // 1. Soft Delete User
+            user.IsDeleted = true;
+            user.DeletedAt = DateTime.UtcNow;
+            user.DeletedBy = user.Id;
+            _unitOfWork.Users.Update(user);
+
+            // 2. Soft Delete Profile
+            if (user.Role == (int)UserRole.Customer)
+            {
+                var customerProfile = await _unitOfWork.CustomerProfiles.Query()
+                    .FirstOrDefaultAsync(c => c.UserId == user.Id && !c.IsDeleted);
+                if (customerProfile != null)
+                {
+                    customerProfile.IsDeleted = true;
+                    customerProfile.DeletedAt = DateTime.UtcNow;
+                    customerProfile.DeletedBy = user.Id;
+                    _unitOfWork.CustomerProfiles.Update(customerProfile);
+                }
+            }
+            else if (user.Role == (int)UserRole.PersonalTrainer)
+            {
+                var ptProfile = await _unitOfWork.PtProfiles.Query()
+                    .FirstOrDefaultAsync(p => p.UserId == user.Id && !p.IsDeleted);
+                if (ptProfile != null)
+                {
+                    ptProfile.IsDeleted = true;
+                    ptProfile.DeletedAt = DateTime.UtcNow;
+                    ptProfile.DeletedBy = user.Id;
+                    _unitOfWork.PtProfiles.Update(ptProfile);
+                }
+            }
+
+            // 3. Revoke Refresh Tokens
+            var activeTokens = await _unitOfWork.RefreshTokens.Query()
+                .Where(t => t.UserId == user.Id && t.RevokedAt == null)
+                .ToListAsync();
+            foreach (var token in activeTokens)
+            {
+                token.RevokedAt = DateTime.UtcNow;
+                _unitOfWork.RefreshTokens.Update(token);
+            }
+
+            // 4. Audit Log
+            try
+            {
+                var auditLog = new AuditLog
+                {
+                    Id = Guid.NewGuid(),
+                    ActorUserId = user.Id,
+                    Action = "SelfDeleteAccount",
+                    EntityName = "User",
+                    EntityId = user.Id,
+                    MetadataJson = System.Text.Json.JsonSerializer.Serialize(new { Email = user.Email }),
+                    CreatedAt = DateTime.UtcNow
+                };
+                await _unitOfWork.AuditLogs.AddAsync(auditLog);
+            }
+            catch {}
+
+            await _unitOfWork.SaveChangesAsync();
+            await _unitOfWork.CommitTransactionAsync();
+
+            return ApiResponse<string>.Ok(user.Id.ToString(), "Account deleted successfully.");
+        }
+        catch (Exception ex)
+        {
+            await _unitOfWork.RollbackTransactionAsync();
+            return ApiResponse<string>.Fail($"Failed to delete account: {ex.Message}");
+        }
+    }
+
     #region Helper Methods
 
     private async Task<User?> GetCurrentActiveUserAsync()

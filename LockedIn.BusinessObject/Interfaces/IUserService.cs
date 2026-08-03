@@ -10,4 +10,5 @@ public interface IUserService
     Task<ApiResponse<UserResponse>> UpdateMyProfileAsync(UpdateUserRequest request);
     Task<ApiResponse<UserResponse>> UpdateAvatarAsync(UpdateAvatarRequest request);
     Task<ApiResponse<string>> ChangePasswordAsync(ChangePasswordRequest request);
+    Task<ApiResponse<string>> DeleteMyAccountAsync(DeleteAccountRequest request);
 }
