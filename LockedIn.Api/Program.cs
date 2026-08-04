@@ -139,7 +139,9 @@ namespace LockedIn.Api
             {
                 options.AddPolicy("AllowFrontend", policy =>
                 {
-                    policy.WithOrigins("http://localhost:5173", "http://localhost:3000")
+                    policy.WithOrigins("http://localhost:5173", "http://localhost:3000", "https://lockedin-gym.vercel.app",
+    "https://lockedin.io.vn",
+    "https://www.lockedin.io.vn")
                           .AllowAnyHeader()
                           .AllowAnyMethod();
                 });
