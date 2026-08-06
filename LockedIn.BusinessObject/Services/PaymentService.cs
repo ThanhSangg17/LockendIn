@@ -127,12 +127,6 @@ public class PaymentService : IPaymentService
             return ApiResponse<PaymentResponse>.Fail($"Failed to create payment link with PayOS: {ex.Message}");
         }
 
-        string? qrCodeImageUrl = null;
-        if (!string.IsNullOrWhiteSpace(paymentLink.QrCode))
-        {
-            qrCodeImageUrl = $"https://api.qrserver.com/v1/create-qr-code/?size=300x300&data={Uri.EscapeDataString(paymentLink.QrCode)}";
-        }
-
         var orderCodeStr = payOsOrderCode.ToString();
         var payment = new Payment
         {
@@ -143,6 +137,7 @@ public class PaymentService : IPaymentService
             Amount = booking.TotalAmount,
             Status = (int)PaymentStatus.Pending,
             CheckoutUrl = paymentLink.CheckoutUrl,
+            QrCode = paymentLink.QrCode,
             ExpiredAt = DateTime.UtcNow.AddMinutes(15),
             CreatedAt = DateTime.UtcNow
         };
@@ -151,7 +146,6 @@ public class PaymentService : IPaymentService
         await _unitOfWork.SaveChangesAsync();
 
         var response = MapToPaymentResponse(payment);
-        response.QrCodeImageUrl = qrCodeImageUrl;
         return ApiResponse<PaymentResponse>.Ok(response, "Payment link created successfully.");
     }
 
@@ -791,6 +785,12 @@ public class PaymentService : IPaymentService
 
     private PaymentResponse MapToPaymentResponse(Payment payment)
     {
+        string? qrCodeImageUrl = null;
+        if (!string.IsNullOrWhiteSpace(payment.QrCode))
+        {
+            qrCodeImageUrl = $"https://api.qrserver.com/v1/create-qr-code/?size=300x300&data={Uri.EscapeDataString(payment.QrCode)}";
+        }
+
         return new PaymentResponse
         {
             Id = payment.Id,
@@ -800,6 +800,8 @@ public class PaymentService : IPaymentService
             Amount = payment.Amount,
             Status = payment.Status,
             CheckoutUrl = payment.CheckoutUrl,
+            QrCode = payment.QrCode,
+            QrCodeImageUrl = qrCodeImageUrl,
             ProviderTransactionId = payment.ProviderTransactionId,
             PaidAt = payment.PaidAt,
             ExpiredAt = payment.ExpiredAt,

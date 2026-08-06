@@ -553,6 +553,7 @@ public partial class LockedInDbContext : DbContext
                 .HasColumnName("amount");
             entity.Property(e => e.BookingId).HasColumnName("booking_id");
             entity.Property(e => e.CheckoutUrl).HasColumnName("checkout_url");
+            entity.Property(e => e.QrCode).HasColumnName("qr_code");
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("(sysutcdatetime())")
                 .HasColumnName("created_at");

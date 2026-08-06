@@ -19,6 +19,8 @@ public partial class Payment
 
     public string? CheckoutUrl { get; set; }
 
+    public string? QrCode { get; set; }
+
     public string? ProviderTransactionId { get; set; }
 
     public DateTime? PaidAt { get; set; }
