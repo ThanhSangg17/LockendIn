@@ -15,6 +15,8 @@ public partial class PtProfile
 
     public int ExperienceYears { get; set; }
 
+    public string? QrCodeUrl { get; set; }
+
     public int VerificationStatus { get; set; }
 
     public decimal AverageRating { get; set; }

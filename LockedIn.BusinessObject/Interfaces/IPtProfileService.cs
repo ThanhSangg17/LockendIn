@@ -11,6 +11,7 @@ public interface IPtProfileService
 {
     Task<ApiResponse<PtProfileResponse>> GetMyPtProfileAsync();
     Task<ApiResponse<PtProfileResponse>> UpdateMyPtProfileAsync(UpdatePtProfileRequest request);
+    Task<ApiResponse<PtProfileResponse>> UpdateMyQrCodeAsync(UpdatePtQrCodeRequest request);
     Task<ApiResponse<PtDocumentResponse>> UploadDocumentAsync(UploadPtDocumentRequest request);
     Task<ApiResponse<IReadOnlyList<PtDocumentResponse>>> GetMyDocumentsAsync();
     Task<ApiResponse<string>> DeleteDocumentAsync(Guid documentId);

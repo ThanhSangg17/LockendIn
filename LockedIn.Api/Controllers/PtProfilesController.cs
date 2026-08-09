@@ -33,6 +33,13 @@ public class PtProfilesController : ControllerBase
         return Ok(result);
     }
 
+    [HttpPut("me/qr-code")]
+    public async Task<IActionResult> UpdateMyQrCodeAsync([FromBody] UpdatePtQrCodeRequest request)
+    {
+        var result = await _service.UpdateMyQrCodeAsync(request);
+        return Ok(result);
+    }
+
     [HttpPost("me/documents")]
     public async Task<IActionResult> UploadDocumentAsync([FromBody] UploadPtDocumentRequest request)
     {

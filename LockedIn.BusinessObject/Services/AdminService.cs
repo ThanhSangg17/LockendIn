@@ -1053,6 +1053,8 @@ public class AdminService : IAdminService
         }
 
         var settlements = await _unitOfWork.Settlements.Query()
+            .Include(s => s.PtProfile)
+                .ThenInclude(pt => pt.User)
             .OrderByDescending(s => s.CreatedAt)
             .ToListAsync();
 
@@ -1061,6 +1063,8 @@ public class AdminService : IAdminService
             Id = s.Id,
             BookingId = s.BookingId,
             PtProfileId = s.PtProfileId,
+            PtFullName = s.PtProfile?.User?.FullName ?? string.Empty,
+            PtQrCodeUrl = s.PtProfile?.QrCodeUrl,
             GrossAmount = s.GrossAmount,
             PlatformFee = s.PlatformFee,
             NetAmount = s.NetAmount,

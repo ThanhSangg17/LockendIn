@@ -7,6 +7,8 @@ public class AdminSettlementResponse
     public Guid Id { get; set; }
     public Guid BookingId { get; set; }
     public Guid PtProfileId { get; set; }
+    public string PtFullName { get; set; } = string.Empty;
+    public string? PtQrCodeUrl { get; set; }
     public decimal GrossAmount { get; set; }
     public decimal PlatformFee { get; set; }
     public decimal NetAmount { get; set; }

@@ -79,6 +79,25 @@ public class PtProfileService : IPtProfileService
         return ApiResponse<PtProfileResponse>.Ok(MapToProfileResponse(ptProfile), "Profile updated successfully.");
     }
 
+    public async Task<ApiResponse<PtProfileResponse>> UpdateMyQrCodeAsync(UpdatePtQrCodeRequest request)
+    {
+        var (ptProfile, error) = await GetCurrentPtProfileAsync();
+        if (error != null) return ApiResponse<PtProfileResponse>.Fail(error);
+
+        if (string.IsNullOrWhiteSpace(request.QrCodeUrl))
+        {
+            return ApiResponse<PtProfileResponse>.Fail("QR code URL is required.");
+        }
+
+        ptProfile!.QrCodeUrl = request.QrCodeUrl.Trim();
+        ptProfile.UpdatedAt = DateTime.UtcNow;
+
+        _unitOfWork.PtProfiles.Update(ptProfile);
+        await _unitOfWork.SaveChangesAsync();
+
+        return ApiResponse<PtProfileResponse>.Ok(MapToProfileResponse(ptProfile), "QR code updated successfully.");
+    }
+
     public async Task<ApiResponse<PtDocumentResponse>> UploadDocumentAsync(UploadPtDocumentRequest request)
     {
         var (ptProfile, error) = await GetCurrentPtProfileAsync();
@@ -220,6 +239,7 @@ public class PtProfileService : IPtProfileService
             Bio = pt.Bio,
             Specialization = pt.Specialization,
             ExperienceYears = pt.ExperienceYears,
+            QrCodeUrl = pt.QrCodeUrl,
             VerificationStatus = pt.VerificationStatus,
             AverageRating = pt.AverageRating,
             TotalReviews = pt.TotalReviews

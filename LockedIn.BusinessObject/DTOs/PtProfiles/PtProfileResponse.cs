@@ -10,6 +10,7 @@ public class PtProfileResponse
     public string? Bio { get; set; }
     public string? Specialization { get; set; }
     public int ExperienceYears { get; set; }
+    public string? QrCodeUrl { get; set; }
     public int VerificationStatus { get; set; }
     public decimal AverageRating { get; set; }
     public int TotalReviews { get; set; }

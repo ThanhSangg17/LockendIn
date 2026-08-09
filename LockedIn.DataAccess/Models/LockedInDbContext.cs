@@ -678,6 +678,7 @@ public partial class LockedInDbContext : DbContext
             entity.Property(e => e.DeletedAt).HasColumnName("deleted_at");
             entity.Property(e => e.DeletedBy).HasColumnName("deleted_by");
             entity.Property(e => e.ExperienceYears).HasColumnName("experience_years");
+            entity.Property(e => e.QrCodeUrl).HasColumnName("qr_code_url");
             entity.Property(e => e.IsDeleted).HasColumnName("is_deleted");
             entity.Property(e => e.Specialization)
                 .HasMaxLength(255)
