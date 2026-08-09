@@ -76,6 +76,7 @@ namespace LockedIn.Api
             builder.Services.AddScoped<ICloudinaryService, CloudinaryService>();
             
             builder.Services.AddHostedService<BackgroundServices.QuotaCleanupBackgroundService>();
+            builder.Services.AddHostedService<BackgroundServices.SessionCleanupBackgroundService>();
 
             // 4.5 PayOS Client
             var payOsClientId = builder.Configuration["PayOS:ClientId"]!;

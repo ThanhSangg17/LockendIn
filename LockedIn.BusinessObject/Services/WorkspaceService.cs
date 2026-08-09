@@ -488,7 +488,7 @@ public class WorkspaceService : IWorkspaceService
         // Check if there is already a WorkspaceSession for this session number
         var existingSession = await _unitOfWork.WorkspaceSessions.Query()
             .FirstOrDefaultAsync(s => s.WorkspaceId == workspaceId && s.SessionNumber == request.SessionNumber);
-        if (existingSession != null && existingSession.Status != (int)WorkspaceSessionStatus.Cancelled)
+        if (existingSession != null && existingSession.Status != (int)WorkspaceSessionStatus.Cancelled && existingSession.Status != (int)WorkspaceSessionStatus.Missed)
             return ApiResponse<SessionProposalResponse>.Fail($"Session number {request.SessionNumber} has already been scheduled or completed.");
 
         // Check if active proposal exists for this Workspace & SessionNumber
@@ -767,11 +767,11 @@ public class WorkspaceService : IWorkspaceService
                 return ApiResponse<WorkspaceSessionResponse>.Fail("HTTP 409 Conflict: PT has another session booked at this time. Please select another slot.");
             }
 
-            // Check if max sessions reached or session already exists
+            // Check if session already scheduled or completed
             var existingSession = await _unitOfWork.WorkspaceSessions.Query()
                 .FirstOrDefaultAsync(s => s.WorkspaceId == workspaceId && s.SessionNumber == proposal.SessionNumber);
 
-            if (existingSession != null && existingSession.Status != (int)WorkspaceSessionStatus.Cancelled)
+            if (existingSession != null && existingSession.Status != (int)WorkspaceSessionStatus.Cancelled && existingSession.Status != (int)WorkspaceSessionStatus.Missed)
             {
                 await _unitOfWork.RollbackTransactionAsync();
                 return ApiResponse<WorkspaceSessionResponse>.Fail($"Session #{proposal.SessionNumber} has already been scheduled.");
@@ -783,19 +783,36 @@ public class WorkspaceService : IWorkspaceService
             proposal.UpdatedAt = DateTime.UtcNow;
             _unitOfWork.SessionProposals.Update(proposal);
 
-            // Create Scheduled WorkspaceSession with UTC timestamps
-            var session = new WorkspaceSession
+            WorkspaceSession session;
+            if (existingSession != null && (existingSession.Status == (int)WorkspaceSessionStatus.Missed || existingSession.Status == (int)WorkspaceSessionStatus.Cancelled))
             {
-                Id = Guid.NewGuid(),
-                WorkspaceId = workspaceId,
-                SessionNumber = proposal.SessionNumber,
-                Status = (int)WorkspaceSessionStatus.Scheduled,
-                ScheduledStart = requestedStart,
-                ScheduledEnd = requestedEnd,
-                CreatedAt = DateTime.UtcNow
-            };
+                // Reuse existing WorkspaceSession record to prevent duplicate SessionNumber
+                session = existingSession;
+                session.Status = (int)WorkspaceSessionStatus.Scheduled;
+                session.ScheduledStart = requestedStart;
+                session.ScheduledEnd = requestedEnd;
+                session.PtCheckedInAt = null;
+                session.CustomerCheckedInAt = null;
+                session.StartedAt = null;
+                session.CompletedAt = null;
+                _unitOfWork.WorkspaceSessions.Update(session);
+            }
+            else
+            {
+                // Create Scheduled WorkspaceSession with UTC timestamps
+                session = new WorkspaceSession
+                {
+                    Id = Guid.NewGuid(),
+                    WorkspaceId = workspaceId,
+                    SessionNumber = proposal.SessionNumber,
+                    Status = (int)WorkspaceSessionStatus.Scheduled,
+                    ScheduledStart = requestedStart,
+                    ScheduledEnd = requestedEnd,
+                    CreatedAt = DateTime.UtcNow
+                };
 
-            await _unitOfWork.WorkspaceSessions.AddAsync(session);
+                await _unitOfWork.WorkspaceSessions.AddAsync(session);
+            }
 
             // Send Notification to PT
             try
