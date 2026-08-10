@@ -73,6 +73,7 @@ namespace LockedIn.Api
             builder.Services.AddScoped<ISettlementService, SettlementService>();
             builder.Services.AddScoped<INotificationService, NotificationService>();
             builder.Services.AddScoped<IAdminService, AdminService>();
+            builder.Services.AddScoped<ITransactionService, TransactionService>();
             builder.Services.AddScoped<ICloudinaryService, CloudinaryService>();
             
             builder.Services.AddHostedService<BackgroundServices.QuotaCleanupBackgroundService>();

@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using LockedIn.BusinessObject.Interfaces;
 using LockedIn.BusinessObject.DTOs.Disputes;
 using LockedIn.BusinessObject.DTOs.Admin;
+using LockedIn.BusinessObject.DTOs.Transactions;
 using LockedIn.BusinessObject.Common;
 
 namespace LockedIn.Api.Controllers;
@@ -15,10 +16,25 @@ namespace LockedIn.Api.Controllers;
 public class AdminController : ControllerBase
 {
     private readonly IAdminService _service;
+    private readonly ITransactionService _transactionService;
 
-    public AdminController(IAdminService service)
+    public AdminController(IAdminService service, ITransactionService transactionService)
     {
         _service = service;
+        _transactionService = transactionService;
+    }
+
+    [HttpGet("transactions")]
+    public async Task<IActionResult> GetAdminTransactionsAsync([FromQuery] TransactionSearchRequest request)
+    {
+        var result = await _transactionService.GetAdminTransactionsAsync(request);
+        if (!result.Success)
+        {
+            if (result.Message != null && result.Message.Contains("Only Admins"))
+                return StatusCode(403, result);
+            return BadRequest(result);
+        }
+        return Ok(result);
     }
 
     [HttpGet("dashboard/analytics")]
