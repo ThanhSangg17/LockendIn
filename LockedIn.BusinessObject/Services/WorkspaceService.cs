@@ -485,6 +485,36 @@ public class WorkspaceService : IWorkspaceService
         if (request.SessionNumber <= 0 || request.SessionNumber > workspace.Booking.SessionCount)
             return ApiResponse<SessionProposalResponse>.Fail($"Session number must be between 1 and {workspace.Booking.SessionCount}.");
 
+        // Rule: Check if there are any active (Scheduled or InProgress) sessions for this workspace.
+        // If an active session exists, PT cannot create a proposal for a higher session number.
+        var activeSession = await _unitOfWork.WorkspaceSessions.Query()
+            .FirstOrDefaultAsync(s => s.WorkspaceId == workspaceId && 
+                                     (s.Status == (int)WorkspaceSessionStatus.Scheduled || s.Status == (int)WorkspaceSessionStatus.InProgress));
+
+        if (activeSession != null && request.SessionNumber > activeSession.SessionNumber)
+        {
+            return ApiResponse<SessionProposalResponse>.Fail($"Cannot create proposal for session #{request.SessionNumber} while session #{activeSession.SessionNumber} is currently {((WorkspaceSessionStatus)activeSession.Status)}.");
+        }
+
+        // Rule: Check sequential integrity for prior sessions.
+        // For any prior session number (1 .. request.SessionNumber - 1), it must have completed its attempt (i.e. status is Completed, Missed, or Cancelled).
+        if (request.SessionNumber > 1)
+        {
+            var priorSessionNumbers = Enumerable.Range(1, request.SessionNumber - 1).ToList();
+            var existingPriorSessions = await _unitOfWork.WorkspaceSessions.Query()
+                .Where(s => s.WorkspaceId == workspaceId && priorSessionNumbers.Contains(s.SessionNumber))
+                .ToListAsync();
+
+            foreach (var priorNum in priorSessionNumbers)
+            {
+                var priorSession = existingPriorSessions.FirstOrDefault(s => s.SessionNumber == priorNum);
+                if (priorSession == null)
+                {
+                    return ApiResponse<SessionProposalResponse>.Fail($"Cannot create proposal for session #{request.SessionNumber} because session #{priorNum} has not been scheduled yet.");
+                }
+            }
+        }
+
         // Check if there is already a WorkspaceSession for this session number
         var existingSession = await _unitOfWork.WorkspaceSessions.Query()
             .FirstOrDefaultAsync(s => s.WorkspaceId == workspaceId && s.SessionNumber == request.SessionNumber);
