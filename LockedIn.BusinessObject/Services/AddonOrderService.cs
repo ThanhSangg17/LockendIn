@@ -138,8 +138,8 @@ public class AddonOrderService : IAddonOrderService
         await LogAuditActionAsync(userId, "CreateAddonPaymentAttempt", order, ptProfile, orderItem, attempt);
 
         // Call PayOS
-        var cancelUrl = _configuration["PayOS:CancelUrl"] ?? "http://localhost:5173/payment/cancel";
-        var returnUrl = _configuration["PayOS:ReturnUrl"] ?? "http://localhost:5173/payment/success";
+        var cancelUrl = _configuration["PayOS:CancelUrl"] ?? "http://localhost:5173/#/payment-failed";
+        var returnUrl = _configuration["PayOS:ReturnUrl"] ?? "http://localhost:5173/#/payment-success";
 
         var payOsRequest = new PayOS.Models.V2.PaymentRequests.CreatePaymentLinkRequest
         {
@@ -333,8 +333,8 @@ public class AddonOrderService : IAddonOrderService
 
 
         // Call PayOS
-        var cancelUrl = _configuration["PayOS:CancelUrl"] ?? "http://localhost:5173/payment/cancel";
-        var returnUrl = _configuration["PayOS:ReturnUrl"] ?? "http://localhost:5173/payment/success";
+        var cancelUrl = _configuration["PayOS:CancelUrl"] ?? "http://localhost:5173/#/payment-failed";
+        var returnUrl = _configuration["PayOS:ReturnUrl"] ?? "http://localhost:5173/#/payment-success";
 
         var payOsRequest = new PayOS.Models.V2.PaymentRequests.CreatePaymentLinkRequest
         {

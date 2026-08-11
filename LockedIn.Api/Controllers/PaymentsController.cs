@@ -90,12 +90,12 @@ public class PaymentsController : ControllerBase
             await _service.ConfirmAndGetPaymentStatusAsync(code, status);
         }
 
-        var frontendUrl = _configuration["Frontend:BaseUrl"] ?? "https://lockedin-gym.vercel.app";
+        var frontendUrl = (_configuration["Frontend:BaseUrl"] ?? "https://lockedin-gym.vercel.app").TrimEnd('/');
         if (string.Equals(status, "PAID", StringComparison.OrdinalIgnoreCase))
         {
-            return Redirect($"{frontendUrl}/payment-success?orderCode={orderCode}");
+            return Redirect($"{frontendUrl}/#/payment-success?orderCode={orderCode}");
         }
-        return Redirect($"{frontendUrl}/payment-failed?orderCode={orderCode}");
+        return Redirect($"{frontendUrl}/#/payment-failed?orderCode={orderCode}");
     }
 
     [HttpGet("payos/cancel")]
@@ -109,8 +109,8 @@ public class PaymentsController : ControllerBase
             await _service.ConfirmAndGetPaymentStatusAsync(code, "CANCELLED");
         }
 
-        var frontendUrl = _configuration["Frontend:BaseUrl"] ?? "https://lockedin-gym.vercel.app";
-        return Redirect($"{frontendUrl}/payment-failed?orderCode={orderCode}");
+        var frontendUrl = (_configuration["Frontend:BaseUrl"] ?? "https://lockedin-gym.vercel.app").TrimEnd('/');
+        return Redirect($"{frontendUrl}/#/payment-failed?orderCode={orderCode}");
     }
 
     [HttpGet("payos/webhook")]
