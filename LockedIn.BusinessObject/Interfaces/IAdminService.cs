@@ -44,4 +44,5 @@ public interface IAdminService
     Task<ApiResponse<AddonProductResponse>> DeactivateAddonProductAsync(Guid productId);
     Task<ApiResponse<AddonProductPriceResponse>> CreateAddonProductPriceAsync(Guid productId, CreateAddonProductPriceRequest request);
     Task<ApiResponse<IReadOnlyList<AddonProductPriceResponse>>> GetAddonProductPricesAsync(Guid productId);
+    Task<ApiResponse<PagedResult<AdminPackageResponse>>> GetAdminPackagesAsync(PaginationRequest request, string? search = null, bool? isActive = null, Guid? ptProfileId = null);
 }

@@ -21,6 +21,8 @@ public class DashboardKpiDto
     public decimal MonthlyRevenue { get; set; }
     public int PendingDisputes { get; set; }
     public int ActiveWorkspaces { get; set; }
+    public int TotalPackages { get; set; }
+    public int ActivePackages { get; set; }
 }
 
 public class BookingStatusSummaryDto

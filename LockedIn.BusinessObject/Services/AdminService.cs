@@ -67,6 +67,14 @@ public class AdminService : IAdminService
             .AsNoTracking()
             .CountAsync(w => w.Status == (int)WorkspaceStatus.Active);
 
+        var totalPackages = await _unitOfWork.Packages.Query()
+            .AsNoTracking()
+            .CountAsync(p => !p.IsDeleted);
+
+        var activePackages = await _unitOfWork.Packages.Query()
+            .AsNoTracking()
+            .CountAsync(p => p.IsActive && !p.IsDeleted);
+
         var kpis = new DashboardKpiDto
         {
             TotalUsers = totalUsers,
@@ -74,7 +82,9 @@ public class AdminService : IAdminService
             MonthlyBookings = monthlyBookings,
             MonthlyRevenue = monthlyRevenue,
             PendingDisputes = pendingDisputes,
-            ActiveWorkspaces = activeWorkspaces
+            ActiveWorkspaces = activeWorkspaces,
+            TotalPackages = totalPackages,
+            ActivePackages = activePackages
         };
 
         // 2. Booking Status Summary
@@ -1928,6 +1938,73 @@ public class AdminService : IAdminService
                     UploaderName = e.UploadedByUser?.FullName
                 }).ToList() ?? new List<DisputeEvidenceResponse>()
         };
+    }
+
+    public async Task<ApiResponse<PagedResult<AdminPackageResponse>>> GetAdminPackagesAsync(PaginationRequest request, string? search = null, bool? isActive = null, Guid? ptProfileId = null)
+    {
+        if (!_currentUserService.IsAuthenticated || _currentUserService.Role != (int)UserRole.Admin)
+        {
+            return ApiResponse<PagedResult<AdminPackageResponse>>.Fail("Only Admins can perform this action.");
+        }
+
+        var pageNumber = request.PageNumber <= 0 ? 1 : request.PageNumber;
+        var pageSize = request.PageSize <= 0 ? 10 : request.PageSize;
+
+        var query = _unitOfWork.Packages.Query()
+            .AsNoTracking()
+            .Include(p => p.PtProfile)
+                .ThenInclude(pt => pt.User)
+            .Where(p => !p.IsDeleted);
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var searchTrimmed = search.Trim().ToLower();
+            query = query.Where(p => p.Name.ToLower().Contains(searchTrimmed) || 
+                                     (p.PtProfile.User != null && p.PtProfile.User.FullName.ToLower().Contains(searchTrimmed)));
+        }
+
+        if (isActive.HasValue)
+        {
+            query = query.Where(p => p.IsActive == isActive.Value);
+        }
+
+        if (ptProfileId.HasValue)
+        {
+            query = query.Where(p => p.PtProfileId == ptProfileId.Value);
+        }
+
+        var totalItems = await query.CountAsync();
+        var totalPages = (int)Math.Ceiling(totalItems / (double)pageSize);
+
+        var packages = await query
+            .OrderByDescending(p => p.CreatedAt)
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .Select(p => new AdminPackageResponse
+            {
+                Id = p.Id,
+                PtProfileId = p.PtProfileId,
+                PtFullName = p.PtProfile != null && p.PtProfile.User != null ? p.PtProfile.User.FullName : string.Empty,
+                PtEmail = p.PtProfile != null && p.PtProfile.User != null ? p.PtProfile.User.Email : string.Empty,
+                Name = p.Name,
+                Description = p.Description,
+                SessionCount = p.SessionCount,
+                Price = p.Price,
+                IsActive = p.IsActive,
+                CreatedAt = p.CreatedAt
+            })
+            .ToListAsync();
+
+        var pagedResult = new PagedResult<AdminPackageResponse>
+        {
+            Items = packages,
+            PageNumber = pageNumber,
+            PageSize = pageSize,
+            TotalItems = totalItems,
+            TotalPages = totalPages
+        };
+
+        return ApiResponse<PagedResult<AdminPackageResponse>>.Ok(pagedResult, "Admin packages retrieved successfully.");
     }
 
     #endregion

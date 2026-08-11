@@ -264,4 +264,15 @@ public class AdminController : ControllerBase
         var result = await _service.GetAddonProductPricesAsync(productId);
         return Ok(result);
     }
+
+    [HttpGet("packages")]
+    public async Task<IActionResult> GetAdminPackagesAsync(
+        [FromQuery] PaginationRequest request,
+        [FromQuery] string? search = null,
+        [FromQuery] bool? isActive = null,
+        [FromQuery] Guid? ptProfileId = null)
+    {
+        var result = await _service.GetAdminPackagesAsync(request, search, isActive, ptProfileId);
+        return Ok(result);
+    }
 }
