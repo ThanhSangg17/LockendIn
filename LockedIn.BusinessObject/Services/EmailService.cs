@@ -100,7 +100,7 @@ namespace LockedIn.BusinessObject.Services
                 frontendBaseUrl = "http://localhost:5173";
             }
             frontendBaseUrl = frontendBaseUrl.TrimEnd('/');
-            var verificationLink = $"{frontendBaseUrl}/verify-email?userId={userId}&token={token}";
+            var verificationLink = $"{frontendBaseUrl}/#/verify-email?userId={userId}&token={token}";
 
             var subject = "LockedIn - Verify Your Email Address";
             var htmlBody = $@"
