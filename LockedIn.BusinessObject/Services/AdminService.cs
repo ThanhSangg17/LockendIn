@@ -243,7 +243,7 @@ public class AdminService : IAdminService
         }
 
         var users = await _unitOfWork.Users.Query()
-            .Where(u => !u.IsDeleted)
+            .Where(u => !u.IsDeleted && u.EmailVerified)
             .OrderByDescending(u => u.CreatedAt)
             .ToListAsync();
 
@@ -270,7 +270,7 @@ public class AdminService : IAdminService
         }
 
         var user = await _unitOfWork.Users.Query()
-            .FirstOrDefaultAsync(u => u.Id == userId && !u.IsDeleted);
+            .FirstOrDefaultAsync(u => u.Id == userId && !u.IsDeleted && u.EmailVerified);
 
         if (user == null)
         {
