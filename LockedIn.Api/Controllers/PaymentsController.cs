@@ -90,7 +90,7 @@ public class PaymentsController : ControllerBase
             await _service.ConfirmAndGetPaymentStatusAsync(code, status);
         }
 
-        var frontendUrl = (_configuration["Frontend:BaseUrl"] ?? "https://lockedin-gym.vercel.app").TrimEnd('/');
+        var frontendUrl = (_configuration["Frontend:BaseUrl"] ?? "https://www.lockedin.io.vn").TrimEnd('/');
         if (string.Equals(status, "PAID", StringComparison.OrdinalIgnoreCase))
         {
             return Redirect($"{frontendUrl}/#/payment-success?orderCode={orderCode}");
@@ -109,7 +109,7 @@ public class PaymentsController : ControllerBase
             await _service.ConfirmAndGetPaymentStatusAsync(code, "CANCELLED");
         }
 
-        var frontendUrl = (_configuration["Frontend:BaseUrl"] ?? "https://lockedin-gym.vercel.app").TrimEnd('/');
+        var frontendUrl = (_configuration["Frontend:BaseUrl"] ?? "https://www.lockedin.io.vn").TrimEnd('/');
         return Redirect($"{frontendUrl}/#/payment-failed?orderCode={orderCode}");
     }
 
