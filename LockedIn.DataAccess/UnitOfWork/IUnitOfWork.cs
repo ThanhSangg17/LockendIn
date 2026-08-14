@@ -21,6 +21,7 @@ public interface IUnitOfWork : IDisposable
     IMealPlanRepository MealPlans { get; }
     IAiUsageLogRepository AiUsageLogs { get; }
     IReviewRepository Reviews { get; }
+    IFeedbackRepository Feedbacks { get; }
     IDisputeRepository Disputes { get; }
     IDisputeEvidenceRepository DisputeEvidences { get; }
     ISettlementRepository Settlements { get; }

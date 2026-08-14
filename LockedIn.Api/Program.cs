@@ -45,6 +45,7 @@ namespace LockedIn.Api
             builder.Services.AddScoped<IMealPlanRepository, MealPlanRepository>();
             builder.Services.AddScoped<IAiUsageLogRepository, AiUsageLogRepository>();
             builder.Services.AddScoped<IReviewRepository, ReviewRepository>();
+            builder.Services.AddScoped<IFeedbackRepository, FeedbackRepository>();
             builder.Services.AddScoped<IDisputeRepository, DisputeRepository>();
             builder.Services.AddScoped<IDisputeEvidenceRepository, DisputeEvidenceRepository>();
             builder.Services.AddScoped<ISettlementRepository, SettlementRepository>();
@@ -69,6 +70,7 @@ namespace LockedIn.Api
             builder.Services.AddScoped<IMealPlanService, MealPlanService>();
             builder.Services.AddHttpClient<IGeminiService, GeminiService>();
             builder.Services.AddScoped<IReviewService, ReviewService>();
+            builder.Services.AddScoped<IFeedbackService, FeedbackService>();
             builder.Services.AddScoped<IDisputeService, DisputeService>();
             builder.Services.AddScoped<ISettlementService, SettlementService>();
             builder.Services.AddScoped<INotificationService, NotificationService>();

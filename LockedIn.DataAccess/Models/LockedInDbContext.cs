@@ -49,6 +49,8 @@ public partial class LockedInDbContext : DbContext
 
     public virtual DbSet<Review> Reviews { get; set; }
 
+    public virtual DbSet<Feedback> Feedbacks { get; set; }
+
     public virtual DbSet<Settlement> Settlements { get; set; }
 
     public virtual DbSet<User> Users { get; set; }
@@ -820,6 +822,32 @@ public partial class LockedInDbContext : DbContext
                 .HasForeignKey(d => d.PtProfileId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("fk_reviews_pt_profile_id");
+        });
+
+        modelBuilder.Entity<Feedback>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+
+            entity.ToTable("feedbacks");
+
+            entity.HasIndex(e => e.UserId, "ix_feedbacks_user_id");
+
+            entity.Property(e => e.Id)
+                .HasDefaultValueSql("(newid())")
+                .HasColumnName("id");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+            entity.Property(e => e.Content)
+                .HasMaxLength(2000)
+                .HasColumnName("content");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("(sysutcdatetime())")
+                .HasColumnName("created_at");
+            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
+
+            entity.HasOne(d => d.User).WithMany(p => p.Feedbacks)
+                .HasForeignKey(d => d.UserId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("fk_feedbacks_user_id");
         });
 
         modelBuilder.Entity<Settlement>(entity =>

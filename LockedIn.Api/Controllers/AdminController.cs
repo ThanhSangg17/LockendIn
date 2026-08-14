@@ -17,11 +17,13 @@ public class AdminController : ControllerBase
 {
     private readonly IAdminService _service;
     private readonly ITransactionService _transactionService;
+    private readonly IFeedbackService _feedbackService;
 
-    public AdminController(IAdminService service, ITransactionService transactionService)
+    public AdminController(IAdminService service, ITransactionService transactionService, IFeedbackService feedbackService)
     {
         _service = service;
         _transactionService = transactionService;
+        _feedbackService = feedbackService;
     }
 
     [HttpGet("transactions")]
@@ -273,6 +275,40 @@ public class AdminController : ControllerBase
         [FromQuery] Guid? ptProfileId = null)
     {
         var result = await _service.GetAdminPackagesAsync(request, search, isActive, ptProfileId);
+        return Ok(result);
+    }
+
+    [HttpGet("feedbacks")]
+    public async Task<IActionResult> GetAllFeedbacksAsync()
+    {
+        var result = await _feedbackService.GetAllFeedbacksAsync();
+        if (!result.Success)
+        {
+            if (result.Message != null && result.Message.Contains("Admin"))
+            {
+                return StatusCode(403, result);
+            }
+            return BadRequest(result);
+        }
+        return Ok(result);
+    }
+
+    [HttpDelete("feedbacks/{id}")]
+    public async Task<IActionResult> DeleteFeedbackAsync(Guid id)
+    {
+        var result = await _feedbackService.DeleteFeedbackAsync(id);
+        if (!result.Success)
+        {
+            if (result.Message != null && result.Message.Contains("Admin"))
+            {
+                return StatusCode(403, result);
+            }
+            if (result.Message != null && result.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
+            {
+                return NotFound(result);
+            }
+            return BadRequest(result);
+        }
         return Ok(result);
     }
 }

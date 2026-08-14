@@ -27,6 +27,7 @@ public class UnitOfWork : IUnitOfWork
     public IMealPlanRepository MealPlans { get; }
     public IAiUsageLogRepository AiUsageLogs { get; }
     public IReviewRepository Reviews { get; }
+    public IFeedbackRepository Feedbacks { get; }
     public IDisputeRepository Disputes { get; }
     public IDisputeEvidenceRepository DisputeEvidences { get; }
     public ISettlementRepository Settlements { get; }
@@ -64,6 +65,7 @@ public class UnitOfWork : IUnitOfWork
         MealPlans = new MealPlanRepository(_context);
         AiUsageLogs = new AiUsageLogRepository(_context);
         Reviews = new ReviewRepository(_context);
+        Feedbacks = new FeedbackRepository(_context);
         Disputes = new DisputeRepository(_context);
         DisputeEvidences = new DisputeEvidenceRepository(_context);
         Settlements = new SettlementRepository(_context);
